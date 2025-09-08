@@ -461,6 +461,94 @@ if uploaded_file is not None:
 
         st.markdown("---")
 
+        # --- Daily Revenue Chart (Combined) ---
+        st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
+        st.subheader("Daily Revenue Forecast and Historical Trend")
+        
+        fig = go.Figure()
+
+        # Calculate 30-day moving average for historical data
+        df['30_day_avg'] = df['y'].rolling(window=30).mean()
+
+        # Calculate 30-day moving average for forecasted data
+        forecast['30_day_avg_forecast'] = forecast['yhat_what_if'].rolling(window=30, min_periods=1).mean()
+        
+        # Plot historical daily revenue (as a faint line)
+        fig.add_trace(go.Scatter(
+            x=df['ds'], y=df['y'],
+            mode='lines',
+            name='Historical Daily Revenue',
+            line=dict(color='rgba(0,0,255,0.3)', width=1),
+            hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+        ))
+        
+        # Plot historical 30-day moving average
+        fig.add_trace(go.Scatter(
+            x=df['ds'], y=df['30_day_avg'],
+            mode='lines',
+            name='Historical 30-Day Moving Avg',
+            line=dict(color='green', width=3),
+            hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        ))
+
+        # Plot forecasted daily revenue (dashed, distinct color)
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['yhat_what_if'][forecast['ds'] > df['ds'].max()],
+            mode='lines',
+            name='Forecasted Daily Revenue',
+            line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
+            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
+        ))
+        
+        # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
+        fig.add_trace(go.Scatter(
+            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['30_day_avg_forecast'][forecast['ds'] > df['ds'].max()],
+            mode='lines',
+            name='Forecasted 30-Day Moving Avg',
+            line=dict(color='purple', width=3, dash='dash'),
+            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        ))
+
+        # Confidence interval shading
+        fig.add_trace(go.Scatter(
+            x=list(forecast_df['ds']) + list(forecast_df['ds'])[::-1],
+            y=list(forecast_df['yhat_upper']) + list(forecast_df['yhat_lower'])[::-1],
+            fill='toself',
+            fillcolor='rgba(255, 0, 0, 0.1)',
+            line=dict(color='rgba(255,255,255,0)'),
+            hoverinfo="skip",
+            showlegend=True,
+            name=f"{confidence_interval*100:.0f}% Confidence Interval"
+        ))
+        
+        # Add a vertical dashed line to mark the transition
+        start_of_forecast = df['ds'].max()
+        fig.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
+        
+        # Add annotation for the transition line
+        fig.add_annotation(
+            x=start_of_forecast,
+            y=1,
+            text='Forecast begins here',
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=-40
+        )
+
+        fig.update_layout(
+            title="Daily Revenue: Historical vs. Forecasted",
+            xaxis_title="Date",
+            yaxis_title="Revenue (in thousands of $)",
+            yaxis=dict(tickprefix="$",),
+            template="plotly_white",
+            hovermode="x unified",
+            xaxis_rangeslider_visible=True
+        )
+        st.plotly_chart(fig, use_container_width=True)
+            
+        st.markdown("---")
+
         # --- Cumulative Revenue Chart ---
         st.markdown('<div id="cumulative-revenue"></div>', unsafe_allow_html=True)
         st.subheader("📈 Cumulative Revenue Trend")
@@ -517,146 +605,8 @@ if uploaded_file is not None:
             hovermode="x unified"
         )
         st.plotly_chart(fig_cumulative, use_container_width=True)
-        
-        # --- NEW: TWO SEPARATE DAILY REVENUE CHARTS ---
-        st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
-        st.subheader("Daily Revenue Trends")
-        col_hist_chart, col_forecast_chart = st.columns(2)
 
-        # Calculate 30-day moving average for historical data
-        df['30_day_avg'] = df['y'].rolling(window=30).mean()
-
-        # Calculate 30-day moving average for forecasted data
-        forecast['30_day_avg_forecast'] = forecast['yhat_what_if'].rolling(window=30, min_periods=1).mean()
-
-        with col_hist_chart:
-            st.markdown("#### Historical Daily Revenue")
-            fig_hist = go.Figure()
-            
-            # Plot historical daily revenue (as a faint line)
-            fig_hist.add_trace(go.Scatter(
-                x=df['ds'], y=df['y'],
-                mode='lines',
-                name='Historical Daily Revenue',
-                line=dict(color='rgba(0,0,255,0.3)', width=1),
-                hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
-            ))
-            
-            # Plot historical 30-day moving average
-            fig_hist.add_trace(go.Scatter(
-                x=df['ds'], y=df['30_day_avg'],
-                mode='lines',
-                name='Historical 30-Day Moving Avg',
-                line=dict(color='green', width=3),
-                hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-            ))
-            fig_hist.update_layout(
-                title="Historical Daily Revenue & Moving Average",
-                xaxis_title="Date",
-                yaxis_title="Revenue (in thousands of $)",
-                yaxis=dict(tickprefix="$",),
-                template="plotly_white",
-                hovermode="x unified"
-            )
-            st.plotly_chart(fig_hist, use_container_width=True)
-
-        with col_forecast_chart:
-            st.markdown("#### Forecasted Daily Revenue")
-            fig_forecast = go.Figure()
-            
-            # Plot forecasted daily revenue (dashed, distinct color)
-            fig_forecast.add_trace(go.Scatter(
-                x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['yhat_what_if'][forecast['ds'] > df['ds'].max()],
-                mode='lines',
-                name='Forecasted Daily Revenue',
-                line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
-                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
-            ))
-            
-            # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
-            fig_forecast.add_trace(go.Scatter(
-                x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['30_day_avg_forecast'][forecast['ds'] > df['ds'].max()],
-                mode='lines',
-                name='Forecasted 30-Day Moving Avg',
-                line=dict(color='purple', width=3, dash='dash'),
-                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-            ))
-
-            fig_forecast.update_layout(
-                title="Forecasted Daily Revenue & Moving Average",
-                xaxis_title="Date",
-                yaxis_title="Revenue (in thousands of $)",
-                yaxis=dict(tickprefix="$",),
-                template="plotly_white",
-                hovermode="x unified",
-                xaxis_rangeslider_visible=True
-            )
-            st.plotly_chart(fig_forecast, use_container_width=True)
-            
         st.markdown("---")
-
-        # --- Forecast Chart ---
-        st.markdown('<div id="forecast-chart"></div>', unsafe_allow_html=True)
-        st.subheader(f"🔮 Forecasted Revenue ({forecast_months} Months)")
-
-        # Separate historical and forecast parts
-        historical = forecast[forecast['ds'] <= df['ds'].max()]
-        future_forecast = forecast[forecast['ds'] > df['ds'].max()]
-
-        fig = go.Figure()
-
-        # Historical line
-        fig.add_trace(go.Scatter(
-            x=historical['ds'], y=historical['yhat'],
-            mode='lines',
-            name='Historical',
-            line=dict(color='blue', width=2)
-        ))
-
-        # Forecast line
-        fig.add_trace(go.Scatter(
-            x=future_forecast['ds'], y=future_forecast['yhat_what_if'],
-            mode='lines',
-            name='Forecast',
-            line=dict(color='red', width=3, dash='dash')
-        ))
-
-        # Confidence interval shading
-        fig.add_trace(go.Scatter(
-            x=list(future_forecast['ds']) + list(future_forecast['ds'])[::-1],
-            y=list(future_forecast['yhat_upper']) + list(future_forecast['yhat_lower'])[::-1],
-            fill='toself',
-            fillcolor='rgba(255, 0, 0, 0.2)',
-            line=dict(color='rgba(255,255,255,0)'),
-            hoverinfo="skip",
-            showlegend=True,
-            name=f"{confidence_interval*100:.0f}% Confidence Interval"
-        ))
-        
-        # Add a vertical dashed line to mark the transition
-        fig.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
-        
-        # Add annotation for the transition line
-        fig.add_annotation(
-            x=start_of_forecast,
-            y=1,
-            text='Forecast begins here',
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40
-        )
-
-        fig.update_layout(
-            title=f"Forecasted Revenue for Next {forecast_months} Months",
-            xaxis_title="Date",
-            yaxis_title="Revenue (in thousands of $)",
-            yaxis=dict(tickprefix="$",),
-            template="plotly_white",
-            hovermode="x unified"
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
 
         # --- Forecast Table and Download ---
         st.markdown('<div id="forecast-table"></div>', unsafe_allow_html=True)
@@ -773,12 +723,9 @@ overlay_html = """
   var hostDoc = canParent ? window.parent.document : document;
 
   var ROOT_ID = "mira-overlay-root";
-  var hostDiv = hostDoc.getElementById(ROOT_ID);
-  if (!hostDiv) {
-    hostDiv = hostDoc.createElement("div");
-    hostDiv.id = ROOT_ID;
-    hostDoc.body.appendChild(hostDiv);
-  }
+  var hostDiv = hostDoc.createElement("div");
+  hostDiv.id = ROOT_ID;
+  hostDoc.body.appendChild(hostDiv);
 
   var shadow = hostDiv.shadowRoot || hostDiv.attachShadow({ mode: "open" });
 
