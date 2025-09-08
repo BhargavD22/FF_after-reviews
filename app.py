@@ -206,12 +206,19 @@ if uploaded_file is not None:
             {'holiday': 'Supply Chain Dip', 'ds': pd.to_datetime('2023-11-20'), 'lower_window': -5, 'upper_window': 5},
         ])
 
+        # --- FIX: Add a lower bound to prevent negative forecasts ---
+        df['floor'] = 0
+
         # Fit Prophet model with user-defined seasonality and holidays
-        model = Prophet(weekly_seasonality=weekly_seasonality, yearly_seasonality=yearly_seasonality, holidays=holidays_df)
+        model = Prophet(weekly_seasonality=weekly_seasonality, yearly_seasonality=yearly_seasonality, holidays=holidays_df, growth='linear')
         model.fit(df)
 
         # Make forecast with user-defined confidence interval
         future = model.make_future_dataframe(periods=forecast_period_days)
+        
+        # --- FIX: Add the floor to the future dataframe ---
+        future['floor'] = 0
+
         forecast = model.predict(future)
         
         # --- Convert 'ds' column to datetime to avoid TypeError ---
