@@ -171,7 +171,6 @@ with st.sidebar:
     
     st.header("Upload Dataset")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv", help="The file must contain 'ds' (date) and 'y' (revenue) columns.")
-        
     st.markdown("---")
     
     st.header("⚙️ Settings")
@@ -269,24 +268,80 @@ if uploaded_file is not None:
         total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue) * 100
         avg_revenue_delta = ((avg_forecasted_revenue - avg_historical_revenue) / avg_historical_revenue) * 100
 
+        # --- Calculate CAGR ---
+        # Historical CAGR
+        first_date_hist = df['ds'].min()
+        last_date_hist = df['ds'].max()
+        first_revenue_hist = df.loc[df['ds'] == first_date_hist, 'y'].iloc[0]
+        last_revenue_hist = df.loc[df['ds'] == last_date_hist, 'y'].iloc[0]
+        num_years_hist = (last_date_hist - first_date_hist).days / 365.25
+        cagr_hist = (last_revenue_hist / first_revenue_hist)**(1 / num_years_hist) - 1 if num_years_hist > 0 else 0
+        
+        # Forecasted CAGR
+        first_date_forecast = df['ds'].max()
+        last_date_forecast = forecast_df['ds'].max()
+        first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
+        last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, 'yhat_what_if'].iloc[0]
+        num_years_forecast = (last_date_forecast - first_date_forecast).days / 365.25
+        cagr_forecast = (last_revenue_forecast / first_revenue_forecast)**(1 / num_years_forecast) - 1 if num_years_forecast > 0 else 0
+        
+        
+        st.markdown(
+        """
+        The revenue data for this dashboard is in **thousands**. All values shown are in thousands of dollars ($).
+        """)
+        st.markdown("---")
+
         # --- Display Core Revenue KPIs with New Card Style ---
         st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
         st.subheader("Core Revenue KPIs")
         
-        col1, col2, col3 = st.columns(3)
-        
+        col1, col2 = st.columns(2)
         with col1:
-            # Total Revenue Card
-            delta_icon = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
-            delta_class = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
+            st.markdown("#### Historical Metrics")
             st.markdown(
                 f"""
                 <div class="kpi-container">
-                    <p class="kpi-title">Total Revenue</p>
-                    <p class="kpi-value">${total_forecasted_revenue:,.2f}</p>
+                    <p class="kpi-title">Total Historical Revenue</p>
+                    <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
+                    <p class="kpi-subtitle">Sum of all past revenue</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Avg. Daily Historical Revenue</p>
+                    <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
+                    <p class="kpi-subtitle">Average daily revenue in the past</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Historical CAGR</p>
+                    <p class="kpi-value">{cagr_hist:,.2%}</p>
+                    <p class="kpi-subtitle">Avg. annual growth rate</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        
+        with col2:
+            st.markdown("#### Forecasted Metrics")
+            delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
+            delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Total Forecasted Revenue</p>
+                    <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
                     <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
-                    <div class="kpi-delta {delta_class}">
-                        <span class="delta-icon">{delta_icon}</span>
+                    <div class="kpi-delta {delta_class_total}">
+                        <span class="delta-icon">{delta_icon_total}</span>
                         <span>{total_revenue_delta:,.2f}% vs. Historical</span>
                     </div>
                 </div>
@@ -294,44 +349,40 @@ if uploaded_file is not None:
                 unsafe_allow_html=True
             )
             
-        with col2:
-            # Average Daily Revenue Card
-            delta_icon = "⬆️" if avg_revenue_delta > 0 else "⬇️" if avg_revenue_delta < 0 else "➡️"
-            delta_class = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
+            delta_icon_avg = "⬆️" if avg_revenue_delta > 0 else "⬇️" if avg_revenue_delta < 0 else "➡️"
+            delta_class_avg = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
             st.markdown(
                 f"""
                 <div class="kpi-container">
-                    <p class="kpi-title">Avg. Daily Revenue</p>
+                    <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
                     <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
                     <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
-                    <div class="kpi-delta {delta_class}">
-                        <span class="delta-icon">{delta_icon}</span>
+                    <div class="kpi-delta {delta_class_avg}">
+                        <span class="delta-icon">{delta_icon_avg}</span>
                         <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-
-        with col3:
-            # Highest Forecasted Day Card
-            highest_forecasted_day_value = forecast_df['yhat_what_if'].max()
-            highest_forecasted_day_date = forecast_df.loc[forecast_df['yhat_what_if'].idxmax()]['ds'].strftime('%Y-%m-%d')
+            
+            delta_icon_cagr = "⬆️" if cagr_forecast > cagr_hist else "⬇️" if cagr_forecast < cagr_hist else "➡️"
+            delta_class_cagr = "positive-delta" if cagr_forecast > cagr_hist else "negative-delta"
             st.markdown(
                 f"""
                 <div class="kpi-container">
-                    <p class="kpi-title">Highest Forecasted Day</p>
-                    <p class="kpi-value">${highest_forecasted_day_value:,.2f}</p>
-                    <p class="kpi-subtitle">Date: {highest_forecasted_day_date}</p>
-                    <div class="kpi-delta" style="color: #6c757d;">
-                        <span class="delta-icon">🗓️</span>
-                        <span>What-if scenario applied</span>
+                    <p class="kpi-title">Forecasted CAGR</p>
+                    <p class="kpi-value">{cagr_forecast:,.2%}</p>
+                    <p class="kpi-subtitle">Avg. annual growth rate</p>
+                    <div class="kpi-delta {delta_class_cagr}">
+                        <span class="delta-icon">{delta_icon_cagr}</span>
+                        <span>vs. Historical CAGR</span>
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-        
+
         st.markdown("---")
         
         # --- Growth Metrics (MoM & YoY) ---
@@ -460,7 +511,8 @@ if uploaded_file is not None:
         fig_cumulative.update_layout(
             title="Cumulative Revenue Over Time: Historical vs. Forecasted",
             xaxis_title="Date",
-            yaxis_title="Cumulative Revenue ($)",
+            yaxis_title="Cumulative Revenue (in thousands of $)",
+            yaxis=dict(tickprefix="$",),
             template="plotly_white",
             hovermode="x unified"
         )
@@ -501,7 +553,8 @@ if uploaded_file is not None:
             fig_hist.update_layout(
                 title="Historical Daily Revenue & Moving Average",
                 xaxis_title="Date",
-                yaxis_title="Revenue ($)",
+                yaxis_title="Revenue (in thousands of $)",
+                yaxis=dict(tickprefix="$",),
                 template="plotly_white",
                 hovermode="x unified"
             )
@@ -532,7 +585,8 @@ if uploaded_file is not None:
             fig_forecast.update_layout(
                 title="Forecasted Daily Revenue & Moving Average",
                 xaxis_title="Date",
-                yaxis_title="Revenue ($)",
+                yaxis_title="Revenue (in thousands of $)",
+                yaxis=dict(tickprefix="$",),
                 template="plotly_white",
                 hovermode="x unified",
                 xaxis_rangeslider_visible=True
@@ -596,7 +650,8 @@ if uploaded_file is not None:
         fig.update_layout(
             title=f"Forecasted Revenue for Next {forecast_months} Months",
             xaxis_title="Date",
-            yaxis_title="Revenue",
+            yaxis_title="Revenue (in thousands of $)",
+            yaxis=dict(tickprefix="$",),
             template="plotly_white",
             hovermode="x unified"
         )
@@ -689,6 +744,10 @@ if uploaded_file is not None:
         st.subheader("📉 Time Series Components")
         st.markdown("Prophet breaks down your data into trend, weekly seasonality, and yearly seasonality.")
         components_fig = plot_components_plotly(model, forecast)
+        
+        # Manually update the y-axis labels to include the currency symbol
+        components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
+        
         st.plotly_chart(components_fig, use_container_width=True)
 else:
     st.info("Please upload a CSV file from the sidebar to begin forecasting. The file must contain columns named 'ds' (for dates) and 'y' (for revenue).")
