@@ -340,7 +340,7 @@ if uploaded_file is not None:
         latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
         latest_yoy_hist = yearly_revenue_hist['YoY_Growth'].iloc[-1] if not yearly_revenue_hist['YoY_Growth'].empty else 0
         latest_mom_forecast = monthly_revenue_forecast['MoM_Growth'].iloc[-1] if not monthly_revenue_forecast['MoM_Growth'].empty else 0
-        latest_yoy_forecast = yearly_revenue_forecast['YoY_Growth'].iloc[-1] if not monthly_revenue_forecast['YoY_Growth'].empty else 0
+        latest_yoy_forecast = yearly_revenue_forecast['YoY_Growth'].iloc[-1] if not yearly_revenue_forecast.empty else 0
 
         # Row 1: Month-over-Month Growth
         col7, col8 = st.columns(2)
