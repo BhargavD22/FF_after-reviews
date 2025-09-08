@@ -97,34 +97,61 @@ st.markdown(
             color: #ffffff;
         }}
 
-        /* New card-like container style for KPIs */
-        .kpi-card {{
+        /* New KPI card styles (Power BI inspired) */
+        .kpi-container {{
+            display: flex;
+            flex-direction: column;
             background-color: #ffffff;
             padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease-in-out;
-            text-align: center;
+            margin-bottom: 1rem;
+            height: 100%; /* Ensure all cards in a row have the same height */
         }}
-        .kpi-card:hover {{
+        .kpi-container:hover {{
             transform: translateY(-5px);
         }}
-        .kpi-label {{
+        .kpi-title {{
             font-size: 1rem;
             color: #666;
             font-weight: 600;
             margin-bottom: 0.5rem;
         }}
         .kpi-value {{
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 700;
             color: #007bff;
-            margin-bottom: 0;
+            margin: 0.2rem 0;
+        }}
+        .kpi-subtitle {{
+            font-size: 0.875rem;
+            color: #888;
+            margin-top: 0;
+            font-weight: 400;
         }}
         .kpi-delta {{
-            font-size: 0.875rem;
-            color: #28a745;
-            margin-top: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+        }}
+        .positive-delta {{
+            color: #28a745; /* Green */
+        }}
+        .negative-delta {{
+            color: #dc3545; /* Red */
+        }}
+        .delta-icon {{
+            margin-right: 0.5rem;
+        }}
+        .st-emotion-cache-1r4qj8m {{
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }}
     </style>
     """,
@@ -237,88 +264,74 @@ if uploaded_file is not None:
         forecast_df = forecast[forecast['ds'] > df['ds'].max()]
         total_forecasted_revenue = forecast_df['yhat_what_if'].sum()
         avg_forecasted_revenue = forecast_df['yhat_what_if'].mean()
+        
+        # Calculate deltas (percentage change)
+        total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue) * 100
+        avg_revenue_delta = ((avg_forecasted_revenue - avg_historical_revenue) / avg_historical_revenue) * 100
 
-        # --- Display Core Revenue KPIs with Side-by-Side Comparison ---
+        # --- Display Core Revenue KPIs with New Card Style ---
         st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
         st.subheader("Core Revenue KPIs")
         
-        # Row 1: Total Revenue
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(
-                f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Historical Total Revenue</p>
-                    <p class="kpi-value">${total_historical_revenue:,.2f}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with col2:
-            st.markdown(
-                f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Forecasted Total Revenue ({forecast_months} mo)</p>
-                    <p class="kpi-value">${total_forecasted_revenue:,.2f}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        # Row 2: Average Daily Revenue
-        col3, col4 = st.columns(2)
-        with col3:
-            st.markdown(
-                f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Historical Average Daily Revenue</p>
-                    <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with col4:
-            st.markdown(
-                f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Forecasted Average Daily Revenue</p>
-                    <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        # Row 3: Highest Revenue Day (Historical vs. Forecasted)
-        highest_revenue_day_value = df['y'].max()
-        highest_revenue_day_date = df.loc[df['y'].idxmax()]['ds'].strftime('%Y-%m-%d')
+        col1, col2, col3 = st.columns(3)
         
-        highest_forecasted_day_value = forecast_df['yhat_what_if'].max()
-        highest_forecasted_day_date = forecast_df.loc[forecast_df['yhat_what_if'].idxmax()]['ds'].strftime('%Y-%m-%d')
-
-        col5, col6 = st.columns(2)
-        with col5:
+        with col1:
+            # Total Revenue Card
+            delta_icon = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
+            delta_class = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Highest Historical Day</p>
-                    <p class="kpi-value">${highest_revenue_day_value:,.2f}</p>
-                    <p class="kpi-delta" style="color: #666;">Date: {highest_revenue_day_date}</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Total Revenue</p>
+                    <p class="kpi-value">${total_forecasted_revenue:,.2f}</p>
+                    <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
+                    <div class="kpi-delta {delta_class}">
+                        <span class="delta-icon">{delta_icon}</span>
+                        <span>{total_revenue_delta:,.2f}% vs. Historical</span>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-        with col6:
+            
+        with col2:
+            # Average Daily Revenue Card
+            delta_icon = "⬆️" if avg_revenue_delta > 0 else "⬇️" if avg_revenue_delta < 0 else "➡️"
+            delta_class = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Highest Forecasted Day</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Avg. Daily Revenue</p>
+                    <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
+                    <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
+                    <div class="kpi-delta {delta_class}">
+                        <span class="delta-icon">{delta_icon}</span>
+                        <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with col3:
+            # Highest Forecasted Day Card
+            highest_forecasted_day_value = forecast_df['yhat_what_if'].max()
+            highest_forecasted_day_date = forecast_df.loc[forecast_df['yhat_what_if'].idxmax()]['ds'].strftime('%Y-%m-%d')
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Highest Forecasted Day</p>
                     <p class="kpi-value">${highest_forecasted_day_value:,.2f}</p>
-                    <p class="kpi-delta" style="color: #666;">Date: {highest_forecasted_day_date}</p>
+                    <p class="kpi-subtitle">Date: {highest_forecasted_day_date}</p>
+                    <div class="kpi-delta" style="color: #6c757d;">
+                        <span class="delta-icon">🗓️</span>
+                        <span>What-if scenario applied</span>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-
+        
         st.markdown("---")
         
         # --- Growth Metrics (MoM & YoY) ---
@@ -354,8 +367,8 @@ if uploaded_file is not None:
         with col7:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Latest Historical MoM Growth</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Latest Historical MoM Growth</p>
                     <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
                 </div>
                 """,
@@ -364,8 +377,8 @@ if uploaded_file is not None:
         with col8:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Latest Forecasted MoM Growth</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Latest Forecasted MoM Growth</p>
                     <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
                 </div>
                 """,
@@ -377,8 +390,8 @@ if uploaded_file is not None:
         with col9:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Latest Historical YoY Growth</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Latest Historical YoY Growth</p>
                     <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
                 </div>
                 """,
@@ -387,8 +400,8 @@ if uploaded_file is not None:
         with col10:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Latest Forecasted YoY Growth</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Latest Forecasted YoY Growth</p>
                     <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
                 </div>
                 """,
@@ -453,9 +466,10 @@ if uploaded_file is not None:
         )
         st.plotly_chart(fig_cumulative, use_container_width=True)
         
-        # --- Daily Revenue with Moving Averages ---
+        # --- NEW: TWO SEPARATE DAILY REVENUE CHARTS ---
         st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
-        st.subheader("Daily Revenue Trend")
+        st.subheader("Daily Revenue Trends")
+        col_hist_chart, col_forecast_chart = st.columns(2)
 
         # Calculate 30-day moving average for historical data
         df['30_day_avg'] = df['y'].rolling(window=30).mean()
@@ -463,75 +477,69 @@ if uploaded_file is not None:
         # Calculate 30-day moving average for forecasted data
         forecast['30_day_avg_forecast'] = forecast['yhat_what_if'].rolling(window=30, min_periods=1).mean()
 
-        fig_daily = go.Figure()
-        
-        # Plot historical daily revenue (as a faint line or dots for less clutter)
-        fig_daily.add_trace(go.Scatter(
-            x=df['ds'], y=df['y'],
-            mode='lines',
-            name='Historical Daily Revenue',
-            line=dict(color='rgba(0,0,255,0.3)', width=1),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
-        ))
-        
-        # Plot historical 30-day moving average
-        fig_daily.add_trace(go.Scatter(
-            x=df['ds'], y=df['30_day_avg'],
-            mode='lines',
-            name='Historical 30-Day Moving Avg',
-            line=dict(color='green', width=3),
-            hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-        ))
-        
-        # Plot forecasted daily revenue (dashed, distinct color)
-        fig_daily.add_trace(go.Scatter(
-            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['yhat_what_if'][forecast['ds'] > df['ds'].max()],
-            mode='lines',
-            name='Forecasted Daily Revenue',
-            line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
-        ))
-        
-        # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
-        fig_daily.add_trace(go.Scatter(
-            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['30_day_avg_forecast'][forecast['ds'] > df['ds'].max()],
-            mode='lines',
-            name='Forecasted 30-Day Moving Avg',
-            line=dict(color='purple', width=3, dash='dash'),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-        ))
+        with col_hist_chart:
+            st.markdown("#### Historical Daily Revenue")
+            fig_hist = go.Figure()
+            
+            # Plot historical daily revenue (as a faint line)
+            fig_hist.add_trace(go.Scatter(
+                x=df['ds'], y=df['y'],
+                mode='lines',
+                name='Historical Daily Revenue',
+                line=dict(color='rgba(0,0,255,0.3)', width=1),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+            ))
+            
+            # Plot historical 30-day moving average
+            fig_hist.add_trace(go.Scatter(
+                x=df['ds'], y=df['30_day_avg'],
+                mode='lines',
+                name='Historical 30-Day Moving Avg',
+                line=dict(color='green', width=3),
+                hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+            ))
+            fig_hist.update_layout(
+                title="Historical Daily Revenue & Moving Average",
+                xaxis_title="Date",
+                yaxis_title="Revenue ($)",
+                template="plotly_white",
+                hovermode="x unified"
+            )
+            st.plotly_chart(fig_hist, use_container_width=True)
 
-        # Add a vertical dashed line to mark the transition
-        fig_daily.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
-        
-        # Add annotation for the transition line
-        fig_daily.add_annotation(
-            x=start_of_forecast,
-            y=1, # Y-coordinate relative to the plot height (0 to 1)
-            xref="x",
-            yref="paper",
-            text='Forecast Begins',
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40,
-            bgcolor="rgba(255, 255, 255, 0.7)",
-            bordercolor="#c7c7c7",
-            borderwidth=1,
-            borderpad=4,
-            font=dict(color="red", size=10)
-        )
+        with col_forecast_chart:
+            st.markdown("#### Forecasted Daily Revenue")
+            fig_forecast = go.Figure()
+            
+            # Plot forecasted daily revenue (dashed, distinct color)
+            fig_forecast.add_trace(go.Scatter(
+                x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['yhat_what_if'][forecast['ds'] > df['ds'].max()],
+                mode='lines',
+                name='Forecasted Daily Revenue',
+                line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
+            ))
+            
+            # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
+            fig_forecast.add_trace(go.Scatter(
+                x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['30_day_avg_forecast'][forecast['ds'] > df['ds'].max()],
+                mode='lines',
+                name='Forecasted 30-Day Moving Avg',
+                line=dict(color='purple', width=3, dash='dash'),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+            ))
 
-        fig_daily.update_layout(
-            title="Daily Revenue with 30-Day Moving Averages: Historical and Forecasted Trends",
-            xaxis_title="Date",
-            yaxis_title="Revenue ($)",
-            template="plotly_white",
-            hovermode="x unified", # Unified hover for all traces at a given x-point
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), # Legend at top right
-            xaxis_rangeslider_visible=True # Add a range slider for zooming
-        )
-        st.plotly_chart(fig_daily, use_container_width=True)
+            fig_forecast.update_layout(
+                title="Forecasted Daily Revenue & Moving Average",
+                xaxis_title="Date",
+                yaxis_title="Revenue ($)",
+                template="plotly_white",
+                hovermode="x unified",
+                xaxis_rangeslider_visible=True
+            )
+            st.plotly_chart(fig_forecast, use_container_width=True)
+            
+        st.markdown("---")
 
         # --- Forecast Chart ---
         st.markdown('<div id="forecast-chart"></div>', unsafe_allow_html=True)
@@ -630,8 +638,8 @@ if uploaded_file is not None:
         with col1:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Mean Absolute Error (MAE)</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Mean Absolute Error (MAE)</p>
                     <p class="kpi-value">${np.mean(np.abs(historical_comparison['y'] - historical_comparison['yhat'])):,.2f}</p>
                 </div>
                 """,
@@ -640,8 +648,8 @@ if uploaded_file is not None:
         with col2:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Root Mean Squared Error (RMSE)</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
                     <p class="kpi-value">${np.sqrt(np.mean((historical_comparison['y'] - historical_comparison['yhat'])**2)):,.2f}</p>
                 </div>
                 """,
@@ -650,8 +658,8 @@ if uploaded_file is not None:
         with col3:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">WAPE</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">WAPE</p>
                     <p class="kpi-value">{wape:,.2f}%</p>
                 </div>
                 """,
@@ -660,8 +668,8 @@ if uploaded_file is not None:
         with col4:
             st.markdown(
                 f"""
-                <div class="kpi-card">
-                    <p class="kpi-label">Forecast Bias</p>
+                <div class="kpi-container">
+                    <p class="kpi-title">Forecast Bias</p>
                     <p class="kpi-value">${forecast_bias:,.2f}</p>
                 </div>
                 """,
