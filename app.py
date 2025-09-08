@@ -165,7 +165,7 @@ st.markdown("A **dynamic** application to analyze historical revenue data and fo
 with st.sidebar:
     # Add logo to the sidebar
     if encoded_string:
-        st.image(LOGO_PATH, use_column_width=True)
+        st.image(LOGO_PATH, use_container_width=True)
     else:
         st.error(f"Logo file not found at {LOGO_PATH}")
     
