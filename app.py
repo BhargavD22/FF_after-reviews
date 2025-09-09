@@ -297,98 +297,97 @@ if uploaded_file is not None:
         The revenue data for this dashboard is in **thousands**. All values shown are in thousands of dollars ($).
         """)
         st.markdown("---")
-
-        # --- Display Core Revenue KPIs with New Card Style ---
-        st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
-        st.subheader("Core Revenue KPIs")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("#### Historical Metrics")
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Total Historical Revenue</p>
-                    <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
-                    <p class="kpi-subtitle">Sum of all past revenue</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Avg. Daily Historical Revenue</p>
-                    <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
-                    <p class="kpi-subtitle">Average daily revenue in the past</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Historical CAGR</p>
-                    <p class="kpi-value">{cagr_hist:,.2%}</p>
-                    <p class="kpi-subtitle">Avg. annual growth rate</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        
-        with col2:
-            st.markdown("#### Forecasted Metrics")
-            delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
-            delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Total Forecasted Revenue</p>
-                    <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
-                    <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
-                    <div class="kpi-delta {delta_class_total}">
-                        <span class="delta-icon">{delta_icon_total}</span>
-                        <span>{total_revenue_delta:,.2f}% vs. Historical</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        with st.expander("🔑 Core Business Metrics", expanded=True):
+            st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
+            st.subheader("Core Revenue KPIs")
             
-            delta_icon_avg = "⬆️" if avg_revenue_delta > 0 else "⬇️" if avg_revenue_delta < 0 else "➡️"
-            delta_class_avg = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
-                    <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
-                    <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
-                    <div class="kpi-delta {delta_class_avg}">
-                        <span class="delta-icon">{delta_icon_avg}</span>
-                        <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
+            col_kpi1, col_kpi2 = st.columns(2)
+            with col_kpi1:
+                st.markdown("#### Historical Metrics")
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Total Historical Revenue</p>
+                        <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
+                        <p class="kpi-subtitle">Sum of all past revenue</p>
                     </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Avg. Daily Historical Revenue</p>
+                        <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
+                        <p class="kpi-subtitle">Average daily revenue in the past</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Historical CAGR</p>
+                        <p class="kpi-value">{cagr_hist:,.2%}</p>
+                        <p class="kpi-subtitle">Avg. annual growth rate</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             
-            delta_icon_cagr = "⬆️" if cagr_forecast > cagr_hist else "⬇️" if cagr_forecast < cagr_hist else "➡️"
-            delta_class_cagr = "positive-delta" if cagr_forecast > cagr_hist else "negative-delta"
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Forecasted CAGR</p>
-                    <p class="kpi-value">{cagr_forecast:,.2%}</p>
-                    <p class="kpi-subtitle">Avg. annual growth rate</p>
-                    <div class="kpi-delta {delta_class_cagr}">
-                        <span class="delta-icon">{delta_icon_cagr}</span>
-                        <span>vs. Historical CAGR</span>
+            with col_kpi2:
+                st.markdown("#### Forecasted Metrics")
+                delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
+                delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Total Forecasted Revenue</p>
+                        <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
+                        <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
+                        <div class="kpi-delta {delta_class_total}">
+                            <span class="delta-icon">{delta_icon_total}</span>
+                            <span>{total_revenue_delta:,.2f}% vs. Historical</span>
+                        </div>
                     </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                delta_icon_avg = "⬆️" if avg_revenue_delta > 0 else "⬇️" if avg_revenue_delta < 0 else "➡️"
+                delta_class_avg = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
+                        <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
+                        <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
+                        <div class="kpi-delta {delta_class_avg}">
+                            <span class="delta-icon">{delta_icon_avg}</span>
+                            <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                delta_icon_cagr = "⬆️" if cagr_forecast > cagr_hist else "⬇️" if cagr_forecast < cagr_hist else "➡️"
+                delta_class_cagr = "positive-delta" if cagr_forecast > cagr_hist else "negative-delta"
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Forecasted CAGR</p>
+                        <p class="kpi-value">{cagr_forecast:,.2%}</p>
+                        <p class="kpi-subtitle">Avg. annual growth rate</p>
+                        <div class="kpi-delta {delta_class_cagr}">
+                            <span class="delta-icon">{delta_icon_cagr}</span>
+                            <span>vs. Historical CAGR</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
         st.markdown("---")
         
         # --- Growth Metrics (MoM & YoY) ---
@@ -471,28 +470,36 @@ if uploaded_file is not None:
         st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
         st.subheader("Daily Revenue Forecast and Historical Trend")
         
-        # Daily Revenue Date Range Selector
-        min_date_daily = df['ds'].min().date()
-        max_date_daily = forecast['ds'].max().date()
-        start_date_daily, end_date_daily = st.date_input(
-            "Select date range for this chart:",
-            value=[min_date_daily, max_date_daily],
-            min_value=min_date_daily,
-            max_value=max_date_daily,
-            key='daily_date_range'
-        )
+        # Separate Date Range Selector for Daily Revenue
+        col_dr1, col_dr2 = st.columns(2)
+        with col_dr1:
+            start_date_daily = st.date_input(
+                "Start Date (Daily Chart):",
+                value=df['ds'].min().date(),
+                min_value=df['ds'].min().date(),
+                max_value=forecast['ds'].max().date(),
+                key='daily_start'
+            )
+        with col_dr2:
+            end_date_daily = st.date_input(
+                "End Date (Daily Chart):",
+                value=forecast['ds'].max().date(),
+                min_value=df['ds'].min().date(),
+                max_value=forecast['ds'].max().date(),
+                key='daily_end'
+            )
 
         # Filter the combined data based on the user's date selection for Daily Revenue
         combined_df_daily = combined_df[
             (combined_df['ds'].dt.date >= start_date_daily) & 
             (combined_df['ds'].dt.date <= end_date_daily)
         ]
+        
+        # Calculate 30-day moving average for the entire combined dataset first
+        combined_df['30_day_avg'] = combined_df['y'].rolling(window=30, min_periods=1).mean()
 
         fig = go.Figure()
 
-        # Calculate 30-day moving average for both historical and forecasted data
-        combined_df['30_day_avg'] = combined_df['y'].rolling(window=30, min_periods=1).mean()
-        
         # Get historical and forecast data from the combined filtered dataframe
         hist_filtered = combined_df_daily[combined_df_daily['type'] == 'Historical']
         forecast_filtered = combined_df_daily[combined_df_daily['type'] == 'Forecast']
@@ -510,7 +517,7 @@ if uploaded_file is not None:
         # Plot historical 30-day moving average
         if not hist_filtered.empty:
             fig.add_trace(go.Scatter(
-                x=hist_filtered['ds'], y=combined_df['30_day_avg'].loc[hist_filtered.index],
+                x=hist_filtered['ds'], y=combined_df.loc[hist_filtered.index, '30_day_avg'],
                 mode='lines',
                 name='Historical 30-Day Moving Avg',
                 line=dict(color='green', width=3),
@@ -530,7 +537,7 @@ if uploaded_file is not None:
         # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
         if not forecast_filtered.empty:
             fig.add_trace(go.Scatter(
-                x=forecast_filtered['ds'], y=combined_df['30_day_avg'].loc[forecast_filtered.index],
+                x=forecast_filtered['ds'], y=combined_df.loc[forecast_filtered.index, '30_day_avg'],
                 mode='lines',
                 name='Forecasted 30-Day Moving Avg',
                 line=dict(color='purple', width=3, dash='dash'),
@@ -591,16 +598,24 @@ if uploaded_file is not None:
         st.markdown('<div id="cumulative-revenue"></div>', unsafe_allow_html=True)
         st.subheader("📈 Cumulative Revenue Trend")
 
-        # Cumulative Revenue Date Range Selector
-        min_date_cumulative = df['ds'].min().date()
-        max_date_cumulative = forecast['ds'].max().date()
-        start_date_cumulative, end_date_cumulative = st.date_input(
-            "Select date range for this chart:",
-            value=[min_date_cumulative, max_date_cumulative],
-            min_value=min_date_cumulative,
-            max_value=max_date_cumulative,
-            key='cumulative_date_range'
-        )
+        # Separate Date Range Selector for Cumulative Revenue
+        col_cr1, col_cr2 = st.columns(2)
+        with col_cr1:
+            start_date_cumulative = st.date_input(
+                "Start Date (Cumulative Chart):",
+                value=df['ds'].min().date(),
+                min_value=df['ds'].min().date(),
+                max_value=forecast['ds'].max().date(),
+                key='cumulative_start'
+            )
+        with col_cr2:
+            end_date_cumulative = st.date_input(
+                "End Date (Cumulative Chart):",
+                value=forecast['ds'].max().date(),
+                min_value=df['ds'].min().date(),
+                max_value=forecast['ds'].max().date(),
+                key='cumulative_end'
+            )
 
         # Calculate cumulative revenue for the full combined dataframe
         combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
