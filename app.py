@@ -221,7 +221,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.error(f"Error reading the file. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
         st.stop()
-    
+
     # Create main content tabs
     tab1, tab2 = st.tabs(["📊 Forecast", "📈 Model Performance"])
 
@@ -252,6 +252,30 @@ if uploaded_file is not None:
         
         # --- Apply what-if scenario to the forecast ---
         forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100)
+        
+        # --- Combine historical and forecast data for unified filtering and plotting ---
+        combined_df = pd.concat([
+            df[['ds', 'y']].assign(type='Historical').set_index('ds'),
+            forecast.rename(columns={'yhat_what_if': 'y'})[['ds', 'y']].assign(type='Forecast').set_index('ds')
+        ]).reset_index()
+
+        # --- Add Date Range Slider to Sidebar ---
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("📅 Filter by Date Range")
+        min_date = df['ds'].min().date()
+        max_date = forecast['ds'].max().date()
+        start_date, end_date = st.sidebar.date_input(
+            "Select date range:",
+            value=[min_date, max_date],
+            min_value=min_date,
+            max_value=max_date
+        )
+
+        # --- Filter the combined data based on the user's date selection ---
+        combined_df_filtered = combined_df[
+            (combined_df['ds'].dt.date >= start_date) & 
+            (combined_df['ds'].dt.date <= end_date)
+        ]
         
         # --- Calculate KPIs for comparison ---
         
@@ -467,74 +491,88 @@ if uploaded_file is not None:
         
         fig = go.Figure()
 
-        # Calculate 30-day moving average for historical data
-        df['30_day_avg'] = df['y'].rolling(window=30).mean()
-
-        # Calculate 30-day moving average for forecasted data
-        forecast['30_day_avg_forecast'] = forecast['yhat_what_if'].rolling(window=30, min_periods=1).mean()
+        # Calculate 30-day moving average for both historical and forecasted data
+        combined_df['30_day_avg'] = combined_df['y'].rolling(window=30, min_periods=1).mean()
         
+        # Get historical and forecast data from the combined filtered dataframe
+        hist_filtered = combined_df_filtered[combined_df_filtered['type'] == 'Historical']
+        forecast_filtered = combined_df_filtered[combined_df_filtered['type'] == 'Forecast']
+
         # Plot historical daily revenue (as a faint line)
-        fig.add_trace(go.Scatter(
-            x=df['ds'], y=df['y'],
-            mode='lines',
-            name='Historical Daily Revenue',
-            line=dict(color='rgba(0,0,255,0.3)', width=1),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
-        ))
+        if not hist_filtered.empty:
+            fig.add_trace(go.Scatter(
+                x=hist_filtered['ds'], y=hist_filtered['y'],
+                mode='lines',
+                name='Historical Daily Revenue',
+                line=dict(color='rgba(0,0,255,0.3)', width=1),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+            ))
         
         # Plot historical 30-day moving average
-        fig.add_trace(go.Scatter(
-            x=df['ds'], y=df['30_day_avg'],
-            mode='lines',
-            name='Historical 30-Day Moving Avg',
-            line=dict(color='green', width=3),
-            hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-        ))
+        if not hist_filtered.empty:
+            fig.add_trace(go.Scatter(
+                x=hist_filtered['ds'], y=hist_filtered['30_day_avg'],
+                mode='lines',
+                name='Historical 30-Day Moving Avg',
+                line=dict(color='green', width=3),
+                hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+            ))
 
         # Plot forecasted daily revenue (dashed, distinct color)
-        fig.add_trace(go.Scatter(
-            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['yhat_what_if'][forecast['ds'] > df['ds'].max()],
-            mode='lines',
-            name='Forecasted Daily Revenue',
-            line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
-        ))
+        if not forecast_filtered.empty:
+            fig.add_trace(go.Scatter(
+                x=forecast_filtered['ds'], y=forecast_filtered['y'],
+                mode='lines',
+                name='Forecasted Daily Revenue',
+                line=dict(color='rgba(255,0,0,0.4)', width=1, dash='dot'),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted Revenue:</b> %{y:$,.2f}<extra></extra>'
+            ))
         
         # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
-        fig.add_trace(go.Scatter(
-            x=forecast['ds'][forecast['ds'] > df['ds'].max()], y=forecast['30_day_avg_forecast'][forecast['ds'] > df['ds'].max()],
-            mode='lines',
-            name='Forecasted 30-Day Moving Avg',
-            line=dict(color='purple', width=3, dash='dash'),
-            hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-        ))
+        if not forecast_filtered.empty:
+            fig.add_trace(go.Scatter(
+                x=forecast_filtered['ds'], y=forecast_filtered['30_day_avg'],
+                mode='lines',
+                name='Forecasted 30-Day Moving Avg',
+                line=dict(color='purple', width=3, dash='dash'),
+                hovertemplate='<b>Date:</b> %{x}<br><b>Forecasted 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+            ))
 
         # Confidence interval shading
-        fig.add_trace(go.Scatter(
-            x=list(forecast_df['ds']) + list(forecast_df['ds'])[::-1],
-            y=list(forecast_df['yhat_upper']) + list(forecast_df['yhat_lower'])[::-1],
-            fill='toself',
-            fillcolor='rgba(255, 0, 0, 0.1)',
-            line=dict(color='rgba(255,255,255,0)'),
-            hoverinfo="skip",
-            showlegend=True,
-            name=f"{confidence_interval*100:.0f}% Confidence Interval"
-        ))
+        # Filter the original forecast data to get the correct bounds
+        forecast_filtered_bounds = forecast[
+            (forecast['ds'].dt.date >= start_date) & 
+            (forecast['ds'].dt.date <= end_date) & 
+            (forecast['ds'] > df['ds'].max())
+        ]
+        
+        if not forecast_filtered_bounds.empty:
+            fig.add_trace(go.Scatter(
+                x=list(forecast_filtered_bounds['ds']) + list(forecast_filtered_bounds['ds'])[::-1],
+                y=list(forecast_filtered_bounds['yhat_upper']) + list(forecast_filtered_bounds['yhat_lower'])[::-1],
+                fill='toself',
+                fillcolor='rgba(255, 0, 0, 0.1)',
+                line=dict(color='rgba(255,255,255,0)'),
+                hoverinfo="skip",
+                showlegend=True,
+                name=f"{confidence_interval*100:.0f}% Confidence Interval"
+            ))
         
         # Add a vertical dashed line to mark the transition
         start_of_forecast = df['ds'].max()
-        fig.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
-        
-        # Add annotation for the transition line
-        fig.add_annotation(
-            x=start_of_forecast,
-            y=1,
-            text='Forecast begins here',
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40
-        )
+        if start_of_forecast >= pd.to_datetime(start_date) and start_of_forecast <= pd.to_datetime(end_date):
+            fig.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
+            fig.add_annotation(
+                x=start_of_forecast,
+                y=1.05,
+                xref="x",
+                yref="paper",
+                text='Forecast begins here',
+                showarrow=True,
+                arrowhead=2,
+                ax=0,
+                ay=-40
+            )
 
         fig.update_layout(
             title="Daily Revenue: Historical vs. Forecasted",
@@ -543,7 +581,8 @@ if uploaded_file is not None:
             yaxis=dict(tickprefix="$",),
             template="plotly_white",
             hovermode="x unified",
-            xaxis_rangeslider_visible=True
+            xaxis_rangeslider_visible=True,
+            xaxis=dict(range=[start_date, end_date])
         )
         st.plotly_chart(fig, use_container_width=True)
             
@@ -553,48 +592,64 @@ if uploaded_file is not None:
         st.markdown('<div id="cumulative-revenue"></div>', unsafe_allow_html=True)
         st.subheader("📈 Cumulative Revenue Trend")
 
-        # Create a combined DataFrame for cumulative revenue
-        combined_df = pd.concat([
-            df[['ds', 'y']].assign(type='Historical'),
-            forecast.rename(columns={'yhat_what_if': 'y'})[['ds', 'y']].assign(type='Forecast')
-        ])
+        # Calculate cumulative revenue for the full combined dataframe
         combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
         
+        # Filter the cumulative data based on the user's date selection
+        cumulative_filtered = combined_df[
+            (combined_df['ds'].dt.date >= start_date) & 
+            (combined_df['ds'].dt.date <= end_date)
+        ]
+
         # Create the plot
         fig_cumulative = go.Figure()
 
         # Plot historical cumulative revenue in one color
-        fig_cumulative.add_trace(go.Scatter(
-            x=combined_df[combined_df['type'] == 'Historical']['ds'],
-            y=combined_df[combined_df['type'] == 'Historical']['cumulative_revenue'],
-            mode='lines',
-            name='Historical Revenue',
-            line=dict(color='blue', width=3)
-        ))
+        historical_cumulative_filtered = cumulative_filtered[cumulative_filtered['type'] == 'Historical']
+        if not historical_cumulative_filtered.empty:
+            fig_cumulative.add_trace(go.Scatter(
+                x=historical_cumulative_filtered['ds'],
+                y=historical_cumulative_filtered['cumulative_revenue'],
+                mode='lines',
+                name='Historical Revenue',
+                line=dict(color='blue', width=3)
+            ))
 
         # Plot forecasted cumulative revenue in another color
-        fig_cumulative.add_trace(go.Scatter(
-            x=combined_df[combined_df['type'] == 'Forecast']['ds'],
-            y=combined_df[combined_df['type'] == 'Forecast']['cumulative_revenue'],
-            mode='lines',
-            name='Forecasted Revenue',
-            line=dict(color='orange', width=3, dash='dash')
-        ))
+        forecasted_cumulative_filtered = cumulative_filtered[cumulative_filtered['type'] == 'Forecast']
+        if not forecasted_cumulative_filtered.empty:
+            # We need to find the last value of the historical cumulative sum
+            # to make the forecast cumulative sum continuous
+            last_historical_cum_sum = 0
+            if not combined_df[combined_df['type'] == 'Historical'].empty:
+                last_historical_cum_sum = combined_df[combined_df['type'] == 'Historical']['cumulative_revenue'].iloc[-1]
+            
+            # The forecast cumulative starts from this last historical point
+            forecasted_cumulative_filtered['cumulative_revenue_adjusted'] = forecasted_cumulative_filtered['y'].cumsum() + last_historical_cum_sum
+            
+            fig_cumulative.add_trace(go.Scatter(
+                x=forecasted_cumulative_filtered['ds'],
+                y=forecasted_cumulative_filtered['cumulative_revenue_adjusted'],
+                mode='lines',
+                name='Forecasted Revenue',
+                line=dict(color='orange', width=3, dash='dash')
+            ))
 
         # Add a vertical dashed line to mark the transition
         start_of_forecast = df['ds'].max()
-        fig_cumulative.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
-        
-        # Add annotation for the transition line
-        fig_cumulative.add_annotation(
-            x=start_of_forecast,
-            y=1,
-            text='Forecast begins here',
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40
-        )
+        if start_of_forecast >= pd.to_datetime(start_date) and start_of_forecast <= pd.to_datetime(end_date):
+            fig_cumulative.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
+            fig_cumulative.add_annotation(
+                x=start_of_forecast,
+                y=1.05,
+                xref="x",
+                yref="paper",
+                text='Forecast begins here',
+                showarrow=True,
+                arrowhead=2,
+                ax=0,
+                ay=-40
+            )
 
         fig_cumulative.update_layout(
             title="Cumulative Revenue Over Time: Historical vs. Forecasted",
@@ -602,7 +657,8 @@ if uploaded_file is not None:
             yaxis_title="Cumulative Revenue (in thousands of $)",
             yaxis=dict(tickprefix="$",),
             template="plotly_white",
-            hovermode="x unified"
+            hovermode="x unified",
+            xaxis=dict(range=[start_date, end_date])
         )
         st.plotly_chart(fig_cumulative, use_container_width=True)
 
@@ -747,7 +803,7 @@ overlay_html = """
   + '.mira-chat-body{flex:1;background:#fafbfc;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}'
   + '.mira-msg{max-width:85%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;line-height:1.35;font-size:14px;white-space:pre-wrap;word-break:break-word;}'
   + '.mira-user{align-self:flex-end;background:#e9f3ff;border-color:#cfe5ff;} .mira-bot{align-self:flex-start;background:#f5f7fb;}'
-  + '.mira-typing{align-self:flex-start;display:inline-flex;gap:6px;padding:8px 10px;border-radius:12px;border:1px solid #e5e7eb;background:#f5f7fb;color:#6b7280;font-size:14px;}'
+  + '.mira-typing{align-self:flex-start;display:inline-flex;gap:6px;padding:8px 10px;border-radius:12px;border:1px solid #e5f7eb;background:#f5f7fb;color:#6b7280;font-size:14px;}'
   + '.mira-typing .dot{width:6px;height:6px;border-radius:50%;background:#6b7280;opacity:.6;animation:mira-blink 1.2s infinite;}'
   + '.mira-typing .dot:nth-child(2){animation-delay:.2s;} .mira-typing .dot:nth-child(3){animation-delay:.4s;}'
   + '@keyframes mira-blink{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}'
