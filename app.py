@@ -153,6 +153,16 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }}
+        /* Watermark style */
+        .watermark {{
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+            z-index: 9999;
+        }}
     </style>
     """,
     unsafe_allow_html=True
@@ -390,79 +400,101 @@ if uploaded_file is not None:
                 )
         st.markdown("---")
         
-        # --- Growth Metrics (MoM & YoY) ---
-        st.markdown('<div id="growth-metrics"></div>', unsafe_allow_html=True)
-        st.subheader("Growth Metrics: MoM & YoY")
-        
-        # Calculate monthly and yearly growth for historical data
-        df['month'] = df['ds'].dt.to_period('M')
-        monthly_revenue_hist = df.groupby('month')['y'].sum().reset_index()
-        monthly_revenue_hist['MoM_Growth'] = monthly_revenue_hist['y'].pct_change() * 100
-        
-        df['year'] = df['ds'].dt.to_period('Y')
-        yearly_revenue_hist = df.groupby('year')['y'].sum().reset_index()
-        yearly_revenue_hist['YoY_Growth'] = yearly_revenue_hist['y'].pct_change() * 100
+        with st.expander("📈 Growth Metrics", expanded=True):
+            st.markdown('<div id="growth-metrics"></div>', unsafe_allow_html=True)
+            st.subheader("Growth Metrics: MoM & YoY")
+            
+            # Separate Date Range Selector for Growth Metrics
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                start_date_growth = st.date_input(
+                    "Start Date (Growth Metrics):",
+                    value=df['ds'].min().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=df['ds'].max().date(),
+                    key='growth_start'
+                )
+            with col_g2:
+                end_date_growth = st.date_input(
+                    "End Date (Growth Metrics):",
+                    value=df['ds'].max().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=df['ds'].max().date(),
+                    key='growth_end'
+                )
 
-        # Calculate monthly and yearly growth for forecasted data
-        forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
-        monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index()
-        monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat_what_if'].pct_change() * 100
-        
-        forecast_df['year'] = forecast_df['ds'].dt.to_period('Y')
-        yearly_revenue_forecast = forecast_df.groupby('year')['yhat_what_if'].sum().reset_index()
-        yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat_what_if'].pct_change() * 100
-        
-        # Get the latest available growth rates for display
-        latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
-        latest_yoy_hist = yearly_revenue_hist['YoY_Growth'].iloc[-1] if not yearly_revenue_hist['YoY_Growth'].empty else 0
-        latest_mom_forecast = monthly_revenue_forecast['MoM_Growth'].iloc[-1] if not monthly_revenue_forecast['MoM_Growth'].empty else 0
-        latest_yoy_forecast = yearly_revenue_forecast['YoY_Growth'].iloc[-1] if not yearly_revenue_forecast.empty else 0
+            # Filter the historical data based on the user's date selection for Growth Metrics
+            historical_growth_df = df[(df['ds'].dt.date >= start_date_growth) & (df['ds'].dt.date <= end_date_growth)].copy()
+            
+            # Recalculate monthly and yearly growth for the filtered historical data
+            historical_growth_df['month'] = historical_growth_df['ds'].dt.to_period('M')
+            monthly_revenue_hist = historical_growth_df.groupby('month')['y'].sum().reset_index()
+            monthly_revenue_hist['MoM_Growth'] = monthly_revenue_hist['y'].pct_change() * 100
+            
+            historical_growth_df['year'] = historical_growth_df['ds'].dt.to_period('Y')
+            yearly_revenue_hist = historical_growth_df.groupby('year')['y'].sum().reset_index()
+            yearly_revenue_hist['YoY_Growth'] = yearly_revenue_hist['y'].pct_change() * 100
 
-        # Row 1: Month-over-Month Growth
-        col7, col8 = st.columns(2)
-        with col7:
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Latest Historical MoM Growth</p>
-                    <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with col8:
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Latest Forecasted MoM Growth</p>
-                    <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            # Calculate monthly and yearly growth for forecasted data
+            forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
+            monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index()
+            monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat_what_if'].pct_change() * 100
+            
+            forecast_df['year'] = forecast_df['ds'].dt.to_period('Y')
+            yearly_revenue_forecast = forecast_df.groupby('year')['yhat_what_if'].sum().reset_index()
+            yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat_what_if'].pct_change() * 100
+            
+            # Get the latest available growth rates for display
+            latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
+            latest_yoy_hist = yearly_revenue_hist['YoY_Growth'].iloc[-1] if not yearly_revenue_hist['YoY_Growth'].empty else 0
+            latest_mom_forecast = monthly_revenue_forecast['MoM_Growth'].iloc[-1] if not monthly_revenue_forecast['MoM_Growth'].empty else 0
+            latest_yoy_forecast = yearly_revenue_forecast['YoY_Growth'].iloc[-1] if not yearly_revenue_forecast.empty else 0
 
-        # Row 2: Year-over-Year Growth
-        col9, col10 = st.columns(2)
-        with col9:
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Latest Historical YoY Growth</p>
-                    <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        with col10:
-            st.markdown(
-                f"""
-                <div class="kpi-container">
-                    <p class="kpi-title">Latest Forecasted YoY Growth</p>
-                    <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            # Row 1: Month-over-Month Growth
+            col7, col8 = st.columns(2)
+            with col7:
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Latest Historical MoM Growth</p>
+                        <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with col8:
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Latest Forecasted MoM Growth</p>
+                        <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # Row 2: Year-over-Year Growth
+            col9, col10 = st.columns(2)
+            with col9:
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Latest Historical YoY Growth</p>
+                        <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with col10:
+                st.markdown(
+                    f"""
+                    <div class="kpi-container">
+                        <p class="kpi-title">Latest Forecasted YoY Growth</p>
+                        <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
         st.markdown("---")
 
@@ -782,6 +814,9 @@ if uploaded_file is not None:
         st.plotly_chart(components_fig, use_container_width=True)
 else:
     st.info("Please upload a CSV file from the sidebar to begin forecasting. The file must contain columns named 'ds' (for dates) and 'y' (for revenue).")
+
+# --- Watermark at the bottom of the page ---
+st.markdown('<p class="watermark">Created by Gemini for Data Analytics</p>', unsafe_allow_html=True)
 
 # --- Floating Chat (GLOBAL OVERLAY via Shadow DOM) ---
 import base64, os
