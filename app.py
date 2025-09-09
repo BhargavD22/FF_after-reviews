@@ -253,29 +253,11 @@ if uploaded_file is not None:
         # --- Apply what-if scenario to the forecast ---
         forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100)
         
-        # --- Combine historical and forecast data for unified filtering and plotting ---
+        # --- Combine historical and forecast data for unified plotting ---
         combined_df = pd.concat([
             df[['ds', 'y']].assign(type='Historical').set_index('ds'),
             forecast.rename(columns={'yhat_what_if': 'y'})[['ds', 'y']].assign(type='Forecast').set_index('ds')
         ]).reset_index()
-
-        # --- Add Date Range Slider to Sidebar ---
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("📅 Filter by Date Range")
-        min_date = df['ds'].min().date()
-        max_date = forecast['ds'].max().date()
-        start_date, end_date = st.sidebar.date_input(
-            "Select date range:",
-            value=[min_date, max_date],
-            min_value=min_date,
-            max_value=max_date
-        )
-
-        # --- Filter the combined data based on the user's date selection ---
-        combined_df_filtered = combined_df[
-            (combined_df['ds'].dt.date >= start_date) & 
-            (combined_df['ds'].dt.date <= end_date)
-        ]
         
         # --- Calculate KPIs for comparison ---
         
@@ -489,14 +471,31 @@ if uploaded_file is not None:
         st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
         st.subheader("Daily Revenue Forecast and Historical Trend")
         
+        # Daily Revenue Date Range Selector
+        min_date_daily = df['ds'].min().date()
+        max_date_daily = forecast['ds'].max().date()
+        start_date_daily, end_date_daily = st.date_input(
+            "Select date range for this chart:",
+            value=[min_date_daily, max_date_daily],
+            min_value=min_date_daily,
+            max_value=max_date_daily,
+            key='daily_date_range'
+        )
+
+        # Filter the combined data based on the user's date selection for Daily Revenue
+        combined_df_daily = combined_df[
+            (combined_df['ds'].dt.date >= start_date_daily) & 
+            (combined_df['ds'].dt.date <= end_date_daily)
+        ]
+
         fig = go.Figure()
 
         # Calculate 30-day moving average for both historical and forecasted data
         combined_df['30_day_avg'] = combined_df['y'].rolling(window=30, min_periods=1).mean()
         
         # Get historical and forecast data from the combined filtered dataframe
-        hist_filtered = combined_df_filtered[combined_df_filtered['type'] == 'Historical']
-        forecast_filtered = combined_df_filtered[combined_df_filtered['type'] == 'Forecast']
+        hist_filtered = combined_df_daily[combined_df_daily['type'] == 'Historical']
+        forecast_filtered = combined_df_daily[combined_df_daily['type'] == 'Forecast']
 
         # Plot historical daily revenue (as a faint line)
         if not hist_filtered.empty:
@@ -511,7 +510,7 @@ if uploaded_file is not None:
         # Plot historical 30-day moving average
         if not hist_filtered.empty:
             fig.add_trace(go.Scatter(
-                x=hist_filtered['ds'], y=hist_filtered['30_day_avg'],
+                x=hist_filtered['ds'], y=combined_df['30_day_avg'].loc[hist_filtered.index],
                 mode='lines',
                 name='Historical 30-Day Moving Avg',
                 line=dict(color='green', width=3),
@@ -531,7 +530,7 @@ if uploaded_file is not None:
         # Plot forecasted 30-day moving average (dashed, distinct color, thicker)
         if not forecast_filtered.empty:
             fig.add_trace(go.Scatter(
-                x=forecast_filtered['ds'], y=forecast_filtered['30_day_avg'],
+                x=forecast_filtered['ds'], y=combined_df['30_day_avg'].loc[forecast_filtered.index],
                 mode='lines',
                 name='Forecasted 30-Day Moving Avg',
                 line=dict(color='purple', width=3, dash='dash'),
@@ -541,8 +540,8 @@ if uploaded_file is not None:
         # Confidence interval shading
         # Filter the original forecast data to get the correct bounds
         forecast_filtered_bounds = forecast[
-            (forecast['ds'].dt.date >= start_date) & 
-            (forecast['ds'].dt.date <= end_date) & 
+            (forecast['ds'].dt.date >= start_date_daily) & 
+            (forecast['ds'].dt.date <= end_date_daily) & 
             (forecast['ds'] > df['ds'].max())
         ]
         
@@ -560,7 +559,7 @@ if uploaded_file is not None:
         
         # Add a vertical dashed line to mark the transition
         start_of_forecast = df['ds'].max()
-        if start_of_forecast >= pd.to_datetime(start_date) and start_of_forecast <= pd.to_datetime(end_date):
+        if start_of_forecast >= pd.to_datetime(start_date_daily) and start_of_forecast <= pd.to_datetime(end_date_daily):
             fig.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
             fig.add_annotation(
                 x=start_of_forecast,
@@ -582,7 +581,7 @@ if uploaded_file is not None:
             template="plotly_white",
             hovermode="x unified",
             xaxis_rangeslider_visible=True,
-            xaxis=dict(range=[start_date, end_date])
+            xaxis=dict(range=[start_date_daily, end_date_daily])
         )
         st.plotly_chart(fig, use_container_width=True)
             
@@ -592,13 +591,24 @@ if uploaded_file is not None:
         st.markdown('<div id="cumulative-revenue"></div>', unsafe_allow_html=True)
         st.subheader("📈 Cumulative Revenue Trend")
 
+        # Cumulative Revenue Date Range Selector
+        min_date_cumulative = df['ds'].min().date()
+        max_date_cumulative = forecast['ds'].max().date()
+        start_date_cumulative, end_date_cumulative = st.date_input(
+            "Select date range for this chart:",
+            value=[min_date_cumulative, max_date_cumulative],
+            min_value=min_date_cumulative,
+            max_value=max_date_cumulative,
+            key='cumulative_date_range'
+        )
+
         # Calculate cumulative revenue for the full combined dataframe
         combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
         
         # Filter the cumulative data based on the user's date selection
         cumulative_filtered = combined_df[
-            (combined_df['ds'].dt.date >= start_date) & 
-            (combined_df['ds'].dt.date <= end_date)
+            (combined_df['ds'].dt.date >= start_date_cumulative) & 
+            (combined_df['ds'].dt.date <= end_date_cumulative)
         ]
 
         # Create the plot
@@ -637,7 +647,7 @@ if uploaded_file is not None:
 
         # Add a vertical dashed line to mark the transition
         start_of_forecast = df['ds'].max()
-        if start_of_forecast >= pd.to_datetime(start_date) and start_of_forecast <= pd.to_datetime(end_date):
+        if start_of_forecast >= pd.to_datetime(start_date_cumulative) and start_of_forecast <= pd.to_datetime(end_date_cumulative):
             fig_cumulative.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="red")
             fig_cumulative.add_annotation(
                 x=start_of_forecast,
@@ -658,7 +668,7 @@ if uploaded_file is not None:
             yaxis=dict(tickprefix="$",),
             template="plotly_white",
             hovermode="x unified",
-            xaxis=dict(range=[start_date, end_date])
+            xaxis=dict(range=[start_date_cumulative, end_date_cumulative])
         )
         st.plotly_chart(fig_cumulative, use_container_width=True)
 
