@@ -1,0 +1,40 @@
+Financial Forecasting Dashboard: Wireframe Document
+Goal: To provide a dynamic interface for analyzing historical revenue, configuring a Prophet forecasting model, visualizing future trends, and assessing model performance.
+
+I. Overall Layout & Persistent Elements
+Element	Description	Function/Purpose
+Header	📈 Financial Forecasting Dashboard title and a brief description.	Identifies the application and its purpose (dynamic analysis and Prophet forecasting).
+Watermark	Subtle text at the bottom right.	Attribution/branding (Created by Gemini for Data Analytics).
+Main Tabs	Two primary content tabs: 📊 Forecast and 📈 Model Performance.	Segregates the business analysis view from the technical modeling view.
+
+
+II. Sidebar (Control Panel)
+The sidebar is the primary control panel where the user interacts with data input and model configuration settings.
+
+Section	Element	Type	Function/Purpose
+Upload Dataset	File Uploader	Input (CSV)	Allows the user to upload a CSV file with ds (date) and y (revenue) columns.
+⚙️ Settings			Main configuration group.
+Forecast Period	Slider (1 to 60 months)	Input (Integer)	Sets the number of months the Prophet model will predict into the future.
+Model Configuration	Confidence Interval Slider (80% to 99%)	Input (Percentage)	Defines the width of the uncertainty band (yhat_lower and yhat_upper) on charts.
+Seasonality Controls	Weekly/Yearly Checkboxes	Toggle (Boolean)	Enables or disables the respective seasonality components for the Prophet model training.
+What-if Scenario	Number Input (-100.0 to 100.0%)	Input (Float)	Applies a percentage adjustment to all forecasted revenue values (yhat) for simulation purposes.
+🔖 Bookmarks	List of internal page links.	Navigation	Provides quick, smooth-scrolling links to key sections within the main content area.
+
+
+III. Main Content - Tab 1: 📊 Forecast
+This tab focuses on displaying the core business results, trends, and future predictions based on the user's settings.
+
+Section Title	Structure	Content/Functionality
+🔑 Core Business Metrics	Collapsible Expander (Default: Expanded) with a two-column layout of 3 KPI cards each.	Displays aggregate performance indicators: Historical Metrics (Total Revenue, Avg. Daily Revenue, CAGR) and Forecasted Metrics (Total Forecasted Revenue, Avg. Daily Forecasted Revenue, Forecasted CAGR). Includes percentage delta indicators (Up/Down arrow) comparing Forecasted vs. Historical totals/averages.
+📈 Growth Metrics: MoM & YoY	Collapsible Expander (Default: Expanded) with a date range filter and a two-row, two-column KPI card layout.	Date Range Filter: Allows users to select a specific date range within the historical data to calculate growth. KPI Cards: Display the Latest Historical MoM/YoY Growth and the Latest Forecasted MoM/YoY Growth rates.
+Daily Revenue Forecast and Historical Trend	Line Chart with a separate Date Range Filter and Range Slider.	Shows the actual historical data, the forecasted data, the 30-day moving average (historical and forecasted), and the confidence interval shading. A dashed vertical line marks the historical/forecast split.
+Cumulative Revenue Trend	Line Chart with a separate Date Range Filter.	Visualizes the running total revenue over time, showing the cumulative growth path for both historical performance (solid line) and the future forecast (dashed line).
+🧾 Forecast Table	Dataframe and Download Button.	Displays the raw, final forecast data (ds, yhat_what_if, yhat_lower, yhat_upper) for the selected forecast period. The Download Button allows exporting this data as a CSV.
+
+
+IV. Main Content - Tab 2: 📈 Model Performance
+This tab provides technical feedback on the model's accuracy and decomposition.
+
+Section Title	Structure	Content/Functionality
+📊 Model Performance	Four KPI cards in a single row.	Displays key error metrics calculated on the historical data: Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), WAPE (Weighted Absolute Percentage Error), and Forecast Bias.
+📉 Time Series Components	Multi-panel Plotly Chart.	Shows the core components of the Prophet model: Trend, Weekly Seasonality, and Yearly Seasonality. This allows users to understand the underlying drivers of the forecast.
