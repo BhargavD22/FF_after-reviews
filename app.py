@@ -197,6 +197,7 @@ with st.sidebar:
     yearly_seasonality = st.checkbox("Yearly Seasonality", value=True)
 
     st.subheader("What-if Scenario Analysis")
+    what_if_enabled = st.checkbox("Apply What-if Scenario to Forecast", value=True)
     what_if_change = st.number_input("Future Revenue Change (%)", min_value=-100.0, max_value=100.0, value=0.0, step=0.5, help="Enter a percentage change to simulate a what-if scenario. Ex: 10 for a 10% increase.")
 
     st.markdown("---")
@@ -207,9 +208,9 @@ with st.sidebar:
         """
         [Core KPIs](#core-kpis)
         [Growth Metrics](#growth-metrics)
-        [Cumulative Revenue](#cumulative-revenue)
+        [Historical Trends](#historical-trends)
         [Daily Revenue](#daily-revenue)
-        [Forecast Chart](#forecast-chart)
+        [Cumulative Revenue](#cumulative-revenue)
         [Forecast Table](#forecast-table)
         [Model Performance](#model-performance)
         [Time Series Components](#time-series-components)
@@ -264,9 +265,15 @@ if uploaded_file is not None:
         forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100)
         
         # --- Combine historical and forecast data for unified plotting ---
+        # Select the correct forecast column based on the checkbox
+        if what_if_enabled:
+            forecast_col = 'yhat_what_if'
+        else:
+            forecast_col = 'yhat'
+
         combined_df = pd.concat([
             df[['ds', 'y']].assign(type='Historical').set_index('ds'),
-            forecast.rename(columns={'yhat_what_if': 'y'})[['ds', 'y']].assign(type='Forecast').set_index('ds')
+            forecast.rename(columns={forecast_col: 'y'})[['ds', 'y']].assign(type='Forecast').set_index('ds')
         ]).reset_index()
         
         # --- Calculate KPIs for comparison ---
@@ -275,10 +282,10 @@ if uploaded_file is not None:
         total_historical_revenue = df['y'].sum()
         avg_historical_revenue = df['y'].mean()
         
-        # Forecasted KPIs
+        # Forecasted KPIs (using the correct column based on the toggle)
         forecast_df = forecast[forecast['ds'] > df['ds'].max()]
-        total_forecasted_revenue = forecast_df['yhat_what_if'].sum()
-        avg_forecasted_revenue = forecast_df['yhat_what_if'].mean()
+        total_forecasted_revenue = forecast_df[forecast_col].sum()
+        avg_forecasted_revenue = forecast_df[forecast_col].mean()
         
         # Calculate deltas (percentage change)
         total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue) * 100
@@ -297,7 +304,7 @@ if uploaded_file is not None:
         first_date_forecast = df['ds'].max()
         last_date_forecast = forecast_df['ds'].max()
         first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
-        last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, 'yhat_what_if'].iloc[0]
+        last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, forecast_col].iloc[0]
         num_years_forecast = (last_date_forecast - first_date_forecast).days / 365.25
         cagr_forecast = (last_revenue_forecast / first_revenue_forecast)**(1 / num_years_forecast) - 1 if num_years_forecast > 0 else 0
         
@@ -437,13 +444,24 @@ if uploaded_file is not None:
 
             # Calculate monthly and yearly growth for forecasted data
             forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
-            monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index()
-            monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat_what_if'].pct_change() * 100
             
+            # Use the correct forecast column for growth calculations
+            if what_if_enabled:
+                monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index()
+                monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat_what_if'].pct_change() * 100
+            else:
+                monthly_revenue_forecast = forecast_df.groupby('month')['yhat'].sum().reset_index()
+                monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat'].pct_change() * 100
+
             forecast_df['year'] = forecast_df['ds'].dt.to_period('Y')
-            yearly_revenue_forecast = forecast_df.groupby('year')['yhat_what_if'].sum().reset_index()
-            yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat_what_if'].pct_change() * 100
             
+            if what_if_enabled:
+                yearly_revenue_forecast = forecast_df.groupby('year')['yhat_what_if'].sum().reset_index()
+                yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat_what_if'].pct_change() * 100
+            else:
+                yearly_revenue_forecast = forecast_df.groupby('year')['yhat'].sum().reset_index()
+                yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat'].pct_change() * 100
+
             # Get the latest available growth rates for display
             latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
             latest_yoy_hist = yearly_revenue_hist['YoY_Growth'].iloc[-1] if not yearly_revenue_hist['YoY_Growth'].empty else 0
@@ -495,6 +513,45 @@ if uploaded_file is not None:
                     """,
                     unsafe_allow_html=True
                 )
+        st.markdown("---")
+        
+        # --- NEW GRAPH: Historical Data Only ---
+        st.markdown('<div id="historical-trends"></div>', unsafe_allow_html=True)
+        st.subheader("Historical Revenue & 30-Day Moving Average")
+        
+        # Calculate 30-day moving average on the original historical data
+        df['30_day_avg'] = df['y'].rolling(window=30, min_periods=1).mean()
+        
+        fig_hist = go.Figure()
+        
+        # Plot historical daily revenue
+        fig_hist.add_trace(go.Scatter(
+            x=df['ds'], y=df['y'],
+            mode='lines',
+            name='Historical Daily Revenue',
+            line=dict(color='rgba(0,0,255,0.3)', width=1),
+            hovertemplate='<b>Date:</b> %{x}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+        ))
+
+        # Plot the 30-day moving average
+        fig_hist.add_trace(go.Scatter(
+            x=df['ds'], y=df['30_day_avg'],
+            mode='lines',
+            name='30-Day Moving Avg',
+            line=dict(color='green', width=3),
+            hovertemplate='<b>Date:</b> %{x}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        ))
+        
+        fig_hist.update_layout(
+            title="Historical Revenue and Moving Average",
+            xaxis_title="Date",
+            yaxis_title="Revenue (in thousands of $)",
+            yaxis=dict(tickprefix="$",),
+            template="plotly_white",
+            hovermode="x unified",
+            xaxis_rangeslider_visible=True
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
 
         st.markdown("---")
 
@@ -725,17 +782,17 @@ if uploaded_file is not None:
         st.markdown('<div id="forecast-table"></div>', unsafe_allow_html=True)
         st.subheader(f"🧾 {forecast_months}-Month Forecast Table")
         st.dataframe(
-            forecast[['ds', 'yhat_what_if', 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).rename(
+            forecast[['ds', forecast_col, 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).rename(
                 columns={
                     "ds": "Date",
-                    "yhat_what_if": "Predicted Revenue",
+                    forecast_col: "Predicted Revenue",
                     "yhat_lower": "Lower Bound",
                     "yhat_upper": "Upper Bound"
                 }
             )
         )
 
-        csv = forecast[['ds', 'yhat_what_if', 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).to_csv(index=False)
+        csv = forecast[['ds', forecast_col, 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).to_csv(index=False)
         st.download_button(f"⬇️ Download {forecast_months}-Month Forecast CSV", csv, f"forecast_{forecast_months}_months.csv", "text/csv")
 
 
