@@ -4,7 +4,6 @@ import pandas as pd
 from prophet import Prophet
 import plotly.graph_objects as go
 import numpy as np
-from prophet.plot import plot_components_plotly
 import base64
 import os
 
@@ -43,20 +42,12 @@ st.markdown(
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         html, body, .stApp {{
             font-family: 'Inter', sans-serif;
-            color: #262730; /* Dark charcoal text */
         }}
         
         /* Apply custom theme and background for light mode */
         .stApp {{
-            background-color: #f0f2f6; /* Light gray background */
-        }}
-        
-        /* Style the main content container */
-        .main .block-container {{
-            padding-top: 1rem;
-            padding-right: 1rem;
-            padding-left: 1rem;
-            padding-bottom: 1rem;
+            background-color: #f0f2f6;
+            color: #262730;
         }}
         
         /* Style for cards/containers */
@@ -69,6 +60,21 @@ st.markdown(
             margin-bottom: 1rem;
         }}
 
+        /* Style for tabs to make them look cleaner */
+        .stTabs [data-testid="stTab"] {{
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            border: 1px solid #e9ecef;
+            margin-right: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: #495057;
+        }}
+        .stTabs [data-testid="stTab"][aria-selected="true"] {{
+            background-color: #e9ecef;
+            color: #212529;
+            font-weight: 600;
+        }}
+        
         /* Style for expanders */
         .st-emotion-cache-163v2p5 {{
             background-color: #ffffff;
@@ -122,7 +128,7 @@ if os.path.exists(DATA_PATH):
     st.sidebar.success(f"Data loaded from **{DATA_PATH}** automatically.")
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["Forecast", "Model Performance", "Data Preview"])
+    tab1, tab2 = st.tabs(["Dashboard", "Model Performance"])
 
     with tab1:
         st.subheader("Financial Forecasting Dashboard")
@@ -222,17 +228,14 @@ if os.path.exists(DATA_PATH):
         
         with st.expander("Show Forecast Components (Click to expand)"):
             st.write("Seasonal and trend components of the forecast.")
+            # Use the correct function from the original code
+            from prophet.plot import plot_components_plotly
             fig_components = plot_components_plotly(m, forecast)
             fig_components.update_layout(
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
             )
             st.plotly_chart(fig_components, use_container_width=True)
-
-    with tab3:
-        st.header("Data Preview")
-        st.write("A raw look at the dataset used for forecasting.")
-        st.dataframe(data, use_container_width=True)
 
 else:
     st.error(f"Error: The data file **{DATA_PATH}** was not found in the repository.")
