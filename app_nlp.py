@@ -444,7 +444,6 @@ if uploaded_file is not None:
                     key='growth_start'
                 )
                 st.markdown('</div>', unsafe_allow_html=True)
-
             with col_g2:
                 st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
                 end_date_growth = st.date_input(
