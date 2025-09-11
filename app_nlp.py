@@ -154,8 +154,10 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }}
-
-        /* New styles for date selectors */
+        
+        /* CORRECTED STYLES for date selectors */
+        /* This targets Streamlit's internal container classes */
+        div[data-testid="stHorizontalBlock"] > div.date-selector-container,
         .date-selector-container {{
             background-color: #f7f9fc;
             padding: 1rem;
@@ -435,25 +437,25 @@ if uploaded_file is not None:
             # Separate Date Range Selector for Growth Metrics
             col_g1, col_g2 = st.columns(2)
             with col_g1:
-                st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-                start_date_growth = st.date_input(
-                    "Start Date (Growth Metrics):",
-                    value=df['ds'].min().date(),
-                    min_value=df['ds'].min().date(),
-                    max_value=df['ds'].max().date(),
-                    key='growth_start'
-                )
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Use a container to group the date input and apply CSS class
+                with st.container(border=True):
+                    start_date_growth = st.date_input(
+                        "Start Date (Growth Metrics):",
+                        value=df['ds'].min().date(),
+                        min_value=df['ds'].min().date(),
+                        max_value=df['ds'].max().date(),
+                        key='growth_start'
+                    )
             with col_g2:
-                st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-                end_date_growth = st.date_input(
-                    "End Date (Growth Metrics):",
-                    value=df['ds'].max().date(),
-                    min_value=df['ds'].min().date(),
-                    max_value=df['ds'].max().date(),
-                    key='growth_end'
-                )
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Use a container to group the date input and apply CSS class
+                with st.container(border=True):
+                    end_date_growth = st.date_input(
+                        "End Date (Growth Metrics):",
+                        value=df['ds'].max().date(),
+                        min_value=df['ds'].min().date(),
+                        max_value=df['ds'].max().date(),
+                        key='growth_end'
+                    )
 
             # Filter the historical data based on the user's date selection for Growth Metrics
             historical_growth_df = df[(df['ds'].dt.date >= start_date_growth) & (df['ds'].dt.date <= end_date_growth)].copy()
@@ -587,25 +589,23 @@ if uploaded_file is not None:
         # Separate Date Range Selector for Daily Revenue
         col_dr1, col_dr2 = st.columns(2)
         with col_dr1:
-            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-            start_date_daily = st.date_input(
-                "Start Date (Daily Chart):",
-                value=df['ds'].min().date(),
-                min_value=df['ds'].min().date(),
-                max_value=forecast['ds'].max().date(),
-                key='daily_start'
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                start_date_daily = st.date_input(
+                    "Start Date (Daily Chart):",
+                    value=df['ds'].min().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=forecast['ds'].max().date(),
+                    key='daily_start'
+                )
         with col_dr2:
-            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-            end_date_daily = st.date_input(
-                "End Date (Daily Chart):",
-                value=forecast['ds'].max().date(),
-                min_value=df['ds'].min().date(),
-                max_value=forecast['ds'].max().date(),
-                key='daily_end'
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                end_date_daily = st.date_input(
+                    "End Date (Daily Chart):",
+                    value=forecast['ds'].max().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=forecast['ds'].max().date(),
+                    key='daily_end'
+                )
 
         # Filter the combined data based on the user's date selection for Daily Revenue
         combined_df_daily = combined_df[
@@ -719,25 +719,23 @@ if uploaded_file is not None:
         # Separate Date Range Selector for Cumulative Revenue
         col_cr1, col_cr2 = st.columns(2)
         with col_cr1:
-            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-            start_date_cumulative = st.date_input(
-                "Start Date (Cumulative Chart):",
-                value=df['ds'].min().date(),
-                min_value=df['ds'].min().date(),
-                max_value=forecast['ds'].max().date(),
-                key='cumulative_start'
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                start_date_cumulative = st.date_input(
+                    "Start Date (Cumulative Chart):",
+                    value=df['ds'].min().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=forecast['ds'].max().date(),
+                    key='cumulative_start'
+                )
         with col_cr2:
-            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
-            end_date_cumulative = st.date_input(
-                "End Date (Cumulative Chart):",
-                value=forecast['ds'].max().date(),
-                min_value=df['ds'].min().date(),
-                max_value=forecast['ds'].max().date(),
-                key='cumulative_end'
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                end_date_cumulative = st.date_input(
+                    "End Date (Cumulative Chart):",
+                    value=forecast['ds'].max().date(),
+                    min_value=df['ds'].min().date(),
+                    max_value=forecast['ds'].max().date(),
+                    key='cumulative_end'
+                )
 
         # Calculate cumulative revenue for the full combined dataframe
         combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
