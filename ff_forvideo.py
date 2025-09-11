@@ -164,6 +164,21 @@ st.markdown(
             pointer-events: none;
             z-index: 9999;
         }}
+        /* Updated styles for date input widgets */
+        .stDateInput > label {{
+            font-weight: 600;
+            color: #333333;
+        }}
+        .stDateInput > div > div > input {{
+            border-radius: 8px;
+            border: 1px solid #ced4da; /* A subtle border color */
+            padding: 8px 12px;
+            font-size: 1rem;
+        }}
+        .stDateInput > div > div > input:focus {{
+            border-color: #007bff; /* Highlight on focus */
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }}
     </style>
     """,
     unsafe_allow_html=True
@@ -483,24 +498,24 @@ with tab1:
         yearly_revenue_hist['YoY_Growth'] = yearly_revenue_hist['y'].pct_change() * 100
 
         # Calculate monthly and yearly growth for forecasted data
-        forecast_df = filtered_forecast_df.copy() # Use the filtered forecast for growth metrics
-        forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
+        forecast_df_growth = filtered_forecast_df.copy() # Use the filtered forecast for growth metrics
+        forecast_df_growth['month'] = forecast_df_growth['ds'].dt.to_period('M')
         
         # Use the correct forecast column for growth calculations
         if what_if_enabled:
-            monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index()
+            monthly_revenue_forecast = forecast_df_growth.groupby('month')['yhat_what_if'].sum().reset_index()
             monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat_what_if'].pct_change() * 100
         else:
-            monthly_revenue_forecast = forecast_df.groupby('month')['yhat'].sum().reset_index()
+            monthly_revenue_forecast = forecast_df_growth.groupby('month')['yhat'].sum().reset_index()
             monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['yhat'].pct_change() * 100
 
-        forecast_df['year'] = forecast_df['ds'].dt.to_period('Y')
+        forecast_df_growth['year'] = forecast_df_growth['ds'].dt.to_period('Y')
         
         if what_if_enabled:
-            yearly_revenue_forecast = forecast_df.groupby('year')['yhat_what_if'].sum().reset_index()
+            yearly_revenue_forecast = forecast_df_growth.groupby('year')['yhat_what_if'].sum().reset_index()
             yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat_what_if'].pct_change() * 100
         else:
-            yearly_revenue_forecast = forecast_df.groupby('year')['yhat'].sum().reset_index()
+            yearly_revenue_forecast = forecast_df_growth.groupby('year')['yhat'].sum().reset_index()
             yearly_revenue_forecast['YoY_Growth'] = yearly_revenue_forecast['yhat'].pct_change() * 100
 
         # Get the latest available growth rates for display
