@@ -154,6 +154,25 @@ st.markdown(
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }}
+
+        /* New styles for date selectors */
+        .date-selector-container {{
+            background-color: #f7f9fc;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1rem;
+        }}
+        .date-selector-container .stDateInput {{
+            border-color: #ccc;
+            border-radius: 8px;
+        }}
+        .date-selector-container label {{
+            font-weight: 600;
+            color: #555;
+        }}
+
         /* Watermark style */
         .watermark {{
             position: fixed;
@@ -416,6 +435,7 @@ if uploaded_file is not None:
             # Separate Date Range Selector for Growth Metrics
             col_g1, col_g2 = st.columns(2)
             with col_g1:
+                st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
                 start_date_growth = st.date_input(
                     "Start Date (Growth Metrics):",
                     value=df['ds'].min().date(),
@@ -423,7 +443,10 @@ if uploaded_file is not None:
                     max_value=df['ds'].max().date(),
                     key='growth_start'
                 )
+                st.markdown('</div>', unsafe_allow_html=True)
+
             with col_g2:
+                st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
                 end_date_growth = st.date_input(
                     "End Date (Growth Metrics):",
                     value=df['ds'].max().date(),
@@ -431,6 +454,7 @@ if uploaded_file is not None:
                     max_value=df['ds'].max().date(),
                     key='growth_end'
                 )
+                st.markdown('</div>', unsafe_allow_html=True)
 
             # Filter the historical data based on the user's date selection for Growth Metrics
             historical_growth_df = df[(df['ds'].dt.date >= start_date_growth) & (df['ds'].dt.date <= end_date_growth)].copy()
@@ -564,6 +588,7 @@ if uploaded_file is not None:
         # Separate Date Range Selector for Daily Revenue
         col_dr1, col_dr2 = st.columns(2)
         with col_dr1:
+            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
             start_date_daily = st.date_input(
                 "Start Date (Daily Chart):",
                 value=df['ds'].min().date(),
@@ -571,7 +596,9 @@ if uploaded_file is not None:
                 max_value=forecast['ds'].max().date(),
                 key='daily_start'
             )
+            st.markdown('</div>', unsafe_allow_html=True)
         with col_dr2:
+            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
             end_date_daily = st.date_input(
                 "End Date (Daily Chart):",
                 value=forecast['ds'].max().date(),
@@ -579,6 +606,7 @@ if uploaded_file is not None:
                 max_value=forecast['ds'].max().date(),
                 key='daily_end'
             )
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # Filter the combined data based on the user's date selection for Daily Revenue
         combined_df_daily = combined_df[
@@ -692,6 +720,7 @@ if uploaded_file is not None:
         # Separate Date Range Selector for Cumulative Revenue
         col_cr1, col_cr2 = st.columns(2)
         with col_cr1:
+            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
             start_date_cumulative = st.date_input(
                 "Start Date (Cumulative Chart):",
                 value=df['ds'].min().date(),
@@ -699,7 +728,9 @@ if uploaded_file is not None:
                 max_value=forecast['ds'].max().date(),
                 key='cumulative_start'
             )
+            st.markdown('</div>', unsafe_allow_html=True)
         with col_cr2:
+            st.markdown('<div class="date-selector-container">', unsafe_allow_html=True)
             end_date_cumulative = st.date_input(
                 "End Date (Cumulative Chart):",
                 value=forecast['ds'].max().date(),
@@ -707,6 +738,7 @@ if uploaded_file is not None:
                 max_value=forecast['ds'].max().date(),
                 key='cumulative_end'
             )
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # Calculate cumulative revenue for the full combined dataframe
         combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
