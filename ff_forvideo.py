@@ -346,7 +346,6 @@ if uploaded_file is not None:
             
             col_kpi1, col_kpi2 = st.columns(2)
             with col_kpi1:
-                st.markdown("#### Historical Metrics")
                 st.markdown(
                     f"""
                     <div class="kpi-container kpi-container-historical">
@@ -838,7 +837,7 @@ if uploaded_file is not None:
         with col1:
             st.markdown(
                 f"""
-                <div class="kpi-container kpi-container-historical">
+                <div class="kpi-container">
                     <p class="kpi-title">Mean Absolute Error (MAE)</p>
                     <p class="kpi-value">${np.mean(np.abs(historical_comparison['y'] - historical_comparison['yhat'])):,.2f}</p>
                 </div>
@@ -848,7 +847,7 @@ if uploaded_file is not None:
         with col2:
             st.markdown(
                 f"""
-                <div class="kpi-container kpi-container-historical">
+                <div class="kpi-container">
                     <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
                     <p class="kpi-value">${np.sqrt(np.mean((historical_comparison['y'] - historical_comparison['yhat'])**2)):,.2f}</p>
                 </div>
@@ -858,7 +857,7 @@ if uploaded_file is not None:
         with col3:
             st.markdown(
                 f"""
-                <div class="kpi-container kpi-container-historical">
+                <div class="kpi-container">
                     <p class="kpi-title">WAPE</p>
                     <p class="kpi-value">{wape:,.2f}%</p>
                 </div>
@@ -868,7 +867,7 @@ if uploaded_file is not None:
         with col4:
             st.markdown(
                 f"""
-                <div class="kpi-container kpi-container-historical">
+                <div class="kpi-container">
                     <p class="kpi-title">Forecast Bias</p>
                     <p class="kpi-value">${forecast_bias:,.2f}</p>
                 </div>
@@ -888,11 +887,12 @@ if uploaded_file is not None:
         st.markdown('<div id="time-series-components"></div>', unsafe_allow_html=True)
         st.subheader("📉 Time Series Components")
         st.markdown("Prophet breaks down your data into trend, weekly seasonality, and yearly seasonality.")
-        
-        # Revert to the original plot_components_plotly graph
         components_fig = plot_components_plotly(model, forecast)
+        
+        # Manually update the y-axis labels to include the currency symbol
+        components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
+        
         st.plotly_chart(components_fig, use_container_width=True)
-
 else:
     st.info("Please upload a CSV file from the sidebar to begin forecasting. The file must contain columns named 'ds' (for dates) and 'y' (for revenue).")
 
@@ -1069,5 +1069,3 @@ overlay_html = overlay_html.replace("__ICON_B64__", _CHAT_ICON_B64)
 
 # Render with zero height; overlay is attached to parent DOM and floats globally
 components.html(overlay_html, height=0, scrolling=False)
-
-}
