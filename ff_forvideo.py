@@ -226,7 +226,6 @@ if os.path.exists(FILE_PATH):
         # Ensure the 'ds' column is in datetime format and 'y' is numeric
         df['ds'] = pd.to_datetime(df['ds'])
         df['y'] = pd.to_numeric(df['y'])
-        st.success("Dataset loaded successfully from local repository file.")
     except Exception as e:
         st.error(f"Error reading the local file. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
         st.stop()
@@ -265,6 +264,42 @@ with tab1:
     # --- Apply what-if scenario to the forecast ---
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100)
     
+    # --- Add Date Range Selector for Forecasted KPIs and Charts ---
+    st.markdown("---")
+    st.subheader("Select a Date Range for Forecast Analysis")
+    
+    col_date1, col_date2 = st.columns(2)
+    with col_date1:
+        start_date_forecast = st.date_input(
+            "Start Date:",
+            value=df['ds'].max().date(),
+            min_value=df['ds'].max().date(),
+            max_value=forecast['ds'].max().date(),
+            key='forecast_start'
+        )
+    with col_date2:
+        end_date_forecast = st.date_input(
+            "End Date:",
+            value=forecast['ds'].max().date(),
+            min_value=df['ds'].max().date(),
+            max_value=forecast['ds'].max().date(),
+            key='forecast_end'
+        )
+
+    # Convert date objects to datetime for filtering
+    start_dt = pd.to_datetime(start_date_forecast)
+    end_dt = pd.to_datetime(end_date_forecast)
+    
+    # Filter the forecast data frame based on the new date range
+    filtered_forecast_df = forecast[
+        (forecast['ds'] >= start_dt) & 
+        (forecast['ds'] <= end_dt)
+    ]
+    
+    if filtered_forecast_df.empty:
+        st.warning("No forecast data available for the selected date range. Please adjust the dates.")
+        st.stop()
+    
     # --- Combine historical and forecast data for unified plotting ---
     # Select the correct forecast column based on the checkbox
     if what_if_enabled:
@@ -283,10 +318,9 @@ with tab1:
     total_historical_revenue = df['y'].sum()
     avg_historical_revenue = df['y'].mean()
     
-    # Forecasted KPIs (using the correct column based on the toggle)
-    forecast_df = forecast[forecast['ds'] > df['ds'].max()]
-    total_forecasted_revenue = forecast_df[forecast_col].sum()
-    avg_forecasted_revenue = forecast_df[forecast_col].mean()
+    # Forecasted KPIs (using the filtered dataframe)
+    total_forecasted_revenue = filtered_forecast_df[forecast_col].sum()
+    avg_forecasted_revenue = filtered_forecast_df[forecast_col].mean()
     
     # Calculate deltas (percentage change)
     total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue) * 100
@@ -301,11 +335,16 @@ with tab1:
     num_years_hist = (last_date_hist - first_date_hist).days / 365.25
     cagr_hist = (last_revenue_hist / first_revenue_hist)**(1 / num_years_hist) - 1 if num_years_hist > 0 else 0
     
-    # Forecasted CAGR
-    first_date_forecast = df['ds'].max()
-    last_date_forecast = forecast_df['ds'].max()
-    first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
-    last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, forecast_col].iloc[0]
+    # Forecasted CAGR (using the filtered dataframe)
+    first_date_forecast = filtered_forecast_df['ds'].min()
+    last_date_forecast = filtered_forecast_df['ds'].max()
+    # To get the starting revenue for the CAGR calculation, we need to check if the start date is in the historical or forecast period
+    if first_date_forecast <= df['ds'].max():
+        first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
+    else:
+        first_revenue_forecast = filtered_forecast_df.loc[filtered_forecast_df['ds'] == first_date_forecast, forecast_col].iloc[0]
+        
+    last_revenue_forecast = filtered_forecast_df.loc[filtered_forecast_df['ds'] == last_date_forecast, forecast_col].iloc[0]
     num_years_forecast = (last_date_forecast - first_date_forecast).days / 365.25
     cagr_forecast = (last_revenue_forecast / first_revenue_forecast)**(1 / num_years_forecast) - 1 if num_years_forecast > 0 else 0
     
@@ -444,6 +483,7 @@ with tab1:
         yearly_revenue_hist['YoY_Growth'] = yearly_revenue_hist['y'].pct_change() * 100
 
         # Calculate monthly and yearly growth for forecasted data
+        forecast_df = filtered_forecast_df.copy() # Use the filtered forecast for growth metrics
         forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
         
         # Use the correct forecast column for growth calculations
