@@ -165,19 +165,19 @@ st.markdown(
             z-index: 9999;
         }}
         /* Updated styles for date input widgets */
-        .stDateInput > label {{
-            font-weight: 600;
-            color: #333333;
-        }}
-        .stDateInput > div > div > input {{
+        div[data-testid="stDateInput"] input {{
             border-radius: 8px;
             border: 1px solid #ced4da; /* A subtle border color */
             padding: 8px 12px;
             font-size: 1rem;
         }}
-        .stDateInput > div > div > input:focus {{
+        div[data-testid="stDateInput"] input:focus {{
             border-color: #007bff; /* Highlight on focus */
             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }}
+        div[data-testid="stDateInput"] > label {{
+            font-weight: 600;
+            color: #333333;
         }}
     </style>
     """,
@@ -919,12 +919,47 @@ with tab2:
     st.markdown('<div id="time-series-components"></div>', unsafe_allow_html=True)
     st.subheader("📉 Time Series Components")
     st.markdown("Prophet breaks down your data into trend, weekly seasonality, and yearly seasonality.")
-    components_fig = plot_components_plotly(model, forecast)
     
-    # Manually update the y-axis labels to include the currency symbol
-    components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
+    # Generate individual component plots
+    components = ['trend', 'yearly', 'weekly']
+    component_titles = {
+        'trend': 'Overall Trend',
+        'yearly': 'Yearly Seasonality',
+        'weekly': 'Weekly Seasonality'
+    }
     
-    st.plotly_chart(components_fig, use_container_width=True)
+    for component in components:
+        fig_comp = go.Figure()
+        fig_comp.add_trace(go.Scatter(
+            x=forecast['ds'],
+            y=forecast[component],
+            mode='lines',
+            line=dict(color='blue'),
+            name=component_titles[component]
+        ))
+        
+        # Add shading for confidence interval, if available (only for trend)
+        if component == 'trend':
+            fig_comp.add_trace(go.Scatter(
+                x=list(forecast['ds']) + list(forecast['ds'])[::-1],
+                y=list(forecast['trend_upper']) + list(forecast['trend_lower'])[::-1],
+                fill='toself',
+                fillcolor='rgba(0, 123, 255, 0.1)',
+                line=dict(color='rgba(255,255,255,0)'),
+                hoverinfo="skip",
+                showlegend=True,
+                name=f"Trend Confidence Interval"
+            ))
+
+        fig_comp.update_layout(
+            title=f"{component_titles[component]}",
+            xaxis_title="Date",
+            yaxis_title="Revenue (in thousands of $)",
+            yaxis=dict(tickprefix="$"),
+            template="plotly_white",
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig_comp, use_container_width=True)
 
 
 # --- Watermark at the bottom of the page ---
