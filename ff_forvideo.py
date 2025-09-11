@@ -110,9 +110,19 @@ st.markdown(
             margin-bottom: 1rem;
             height: 100%; /* Ensure all cards in a row have the same height */
         }}
+        
+        .kpi-container-historical {{
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+        }}
+        
+        .kpi-container-forecasted {{
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }}
+        
         .kpi-container:hover {{
             transform: translateY(-5px);
         }}
+        
         .kpi-title {{
             font-size: 1rem;
             color: #666;
@@ -379,7 +389,7 @@ with tab1:
             st.markdown("#### Historical Metrics")
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Total Historical Revenue</p>
                     <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
                     <p class="kpi-subtitle">Sum of all past revenue</p>
@@ -389,7 +399,7 @@ with tab1:
             )
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Avg. Daily Historical Revenue</p>
                     <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
                     <p class="kpi-subtitle">Average daily revenue in the past</p>
@@ -399,7 +409,7 @@ with tab1:
             )
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Historical CAGR</p>
                     <p class="kpi-value">{cagr_hist:,.2%}</p>
                     <p class="kpi-subtitle">Avg. annual growth rate</p>
@@ -414,7 +424,7 @@ with tab1:
             delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Total Forecasted Revenue</p>
                     <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
                     <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
@@ -431,7 +441,7 @@ with tab1:
             delta_class_avg = "positive-delta" if avg_revenue_delta > 0 else "negative-delta"
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
                     <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
                     <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
@@ -448,7 +458,7 @@ with tab1:
             delta_class_cagr = "positive-delta" if cagr_forecast > cagr_hist else "negative-delta"
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Forecasted CAGR</p>
                     <p class="kpi-value">{cagr_forecast:,.2%}</p>
                     <p class="kpi-subtitle">Avg. annual growth rate</p>
@@ -529,7 +539,7 @@ with tab1:
         with col7:
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Latest Historical MoM Growth</p>
                     <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
                 </div>
@@ -539,7 +549,7 @@ with tab1:
         with col8:
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Latest Forecasted MoM Growth</p>
                     <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
                 </div>
@@ -552,7 +562,7 @@ with tab1:
         with col9:
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Latest Historical YoY Growth</p>
                     <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
                 </div>
@@ -562,7 +572,7 @@ with tab1:
         with col10:
             st.markdown(
                 f"""
-                <div class="kpi-container">
+                <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Latest Forecasted YoY Growth</p>
                     <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
                 </div>
@@ -869,7 +879,7 @@ with tab2:
     with col1:
         st.markdown(
             f"""
-            <div class="kpi-container">
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Mean Absolute Error (MAE)</p>
                 <p class="kpi-value">${np.mean(np.abs(historical_comparison['y'] - historical_comparison['yhat'])):,.2f}</p>
             </div>
@@ -879,7 +889,7 @@ with tab2:
     with col2:
         st.markdown(
             f"""
-            <div class="kpi-container">
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
                 <p class="kpi-value">${np.sqrt(np.mean((historical_comparison['y'] - historical_comparison['yhat'])**2)):,.2f}</p>
             </div>
@@ -889,7 +899,7 @@ with tab2:
     with col3:
         st.markdown(
             f"""
-            <div class="kpi-container">
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">WAPE</p>
                 <p class="kpi-value">{wape:,.2f}%</p>
             </div>
@@ -899,7 +909,7 @@ with tab2:
     with col4:
         st.markdown(
             f"""
-            <div class="kpi-container">
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Forecast Bias</p>
                 <p class="kpi-value">${forecast_bias:,.2f}</p>
             </div>
