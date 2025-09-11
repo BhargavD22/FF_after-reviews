@@ -241,7 +241,7 @@ combined_df = pd.concat([
 ]).reset_index()
 
 # --- Tabs (keep your original two + add Insights) ---
-tab1, tab2, tab3 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations", "💡 Deep Dive Analysis"])
 
 # ---------------------- TAB 1: Forecast ----------------------
 with tab1:
@@ -506,7 +506,7 @@ with tab1:
         mode='lines',
         name='30-Day Moving Avg',
         line=dict(color='#1f9d55', width=3),
-        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        hovertemplate='<b>Date:</b> %{x|%Y-%m-%m}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
     ))
     fig_hist.update_layout(title="Historical Revenue and Moving Average",
                            xaxis_title="Date", yaxis_title="Revenue (in thousands of $)",
@@ -685,6 +685,7 @@ with tab1:
         ))
 
     # vertical line for forecast start
+    start_of_forecast = df['ds'].max()
     if start_of_forecast >= pd.to_datetime(start_date_cumulative) and start_of_forecast <= pd.to_datetime(end_date_cumulative):
         fig_cumulative.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="#ef4444")
         fig_cumulative.add_annotation(
@@ -838,6 +839,249 @@ with tab3:
         - Re-run forecasts monthly and after major events (promotions, product launches).
         """
     )
+    
+# ---------------------- TAB 4: Deep Dive Analysis ----------------------
+with tab4:
+    st.subheader("📈 Growth & Trend Insights")
+
+    # --- Revenue Momentum ---
+    st.markdown("#### Revenue Momentum & Acceleration")
+    df_momentum = df.copy()
+    df_momentum['90_day_avg'] = df_momentum['y'].rolling(window=90, min_periods=1).mean()
+    df_momentum['rolling_growth'] = df_momentum['90_day_avg'].pct_change()
+    df_momentum['acceleration'] = df_momentum['rolling_growth'].diff()
+    
+    current_acceleration = df_momentum['acceleration'].iloc[-1]
+    
+    col_mom1, col_mom2, col_mom3 = st.columns(3)
+    with col_mom1:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 7-Day Growth</p>
+                <p class="kpi-value">{df['y'].tail(7).pct_change().iloc[-1] * 100:,.2f}%</p>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    with col_mom2:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 30-Day Growth</p>
+                <p class="kpi-value">{df['y'].tail(30).sum() / df['y'].iloc[-31:-1].sum() - 1 * 100:,.2f}%</p>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    with col_mom3:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 90-Day Growth</p>
+                <p class="kpi-value">{df['y'].tail(90).sum() / df['y'].iloc[-91:-1].sum() - 1 * 100:,.2f}%</p>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    
+    if current_acceleration > 0.001:
+        st.success(f"**Growth is accelerating!** The rate of revenue growth has increased recently. This suggests positive momentum.")
+    elif current_acceleration < -0.001:
+        st.error(f"**Growth is decelerating.** The rate of revenue growth is slowing down, which may warrant investigation.")
+    else:
+        st.info("Growth is relatively stable with little acceleration or deceleration.")
+        
+    st.markdown("---")
+
+    # --- Revenue Recovery Analysis ---
+    st.markdown("#### Revenue Recovery Analysis")
+    supply_chain_dip_date = pd.to_datetime('2023-11-20')
+    if supply_chain_dip_date in df['ds'].values:
+        dip_start_date = df[df['ds'] == supply_chain_dip_date].iloc[0].ds
+        dip_revenue = df[df['ds'] == dip_start_date].iloc[0]['y']
+        
+        pre_dip_avg = df[(df['ds'] < dip_start_date) & (df['ds'] > dip_start_date - pd.Timedelta(days=30))]['y'].mean()
+        
+        recovery_df = df[df['ds'] > dip_start_date].copy()
+        
+        recovery_period = recovery_df[recovery_df['y'] >= pre_dip_avg]
+        if not recovery_period.empty:
+            recovery_date = recovery_period.iloc[0].ds
+            days_to_recover = (recovery_date - dip_start_date).days
+            st.info(f"The **'Supply Chain Dip'** on {dip_start_date.strftime('%Y-%m-%d')} caused a drop in revenue. It took approximately **{days_to_recover} days** to recover to the pre-dip average.")
+        else:
+            st.info("The model could not identify a full recovery from the 'Supply Chain Dip' yet.")
+    
+    st.markdown("---")
+    
+    # --- Seasonality & Pattern Insights ---
+    st.subheader("📊 Seasonality & Pattern Insights")
+    df['day_of_week'] = df['ds'].dt.day_name()
+    df['month_of_year'] = df['ds'].dt.month_name()
+    
+    avg_by_day = df.groupby('day_of_week')['y'].mean().reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    avg_by_month = df.groupby('month_of_year')['y'].mean().reindex(pd.to_datetime(range(1, 13), format='%m').month_name())
+    
+    col_season1, col_season2 = st.columns(2)
+    with col_season1:
+        fig_day = go.Figure(data=[go.Bar(x=avg_by_day.index, y=avg_by_day.values, marker_color='#0b6ef6')])
+        fig_day.update_layout(title="Average Revenue by Day of Week", yaxis_title="Average Revenue ($)", xaxis_title="")
+        st.plotly_chart(fig_day, use_container_width=True)
+    
+    with col_season2:
+        fig_month = go.Figure(data=[go.Bar(x=avg_by_month.index, y=avg_by_month.values, marker_color='#1f9d55')])
+        fig_month.update_layout(title="Average Revenue by Month of Year", yaxis_title="Average Revenue ($)", xaxis_title="")
+        st.plotly_chart(fig_month, use_container_width=True)
+        
+    st.markdown("---")
+    
+    # --- Seasonal Strength Index ---
+    st.markdown("#### Seasonal Strength Index")
+    model_components = forecast[['trend', 'yearly', 'weekly']]
+    model_residuals = df['y'] - forecast['yhat'].iloc[:len(df)]
+    
+    trend_variance = model_components['trend'].var()
+    seasonal_variance = model_components[['yearly', 'weekly']].var().sum()
+    noise_variance = model_residuals.var()
+    
+    total_variance = trend_variance + seasonal_variance + noise_variance
+    
+    trend_pct = (trend_variance / total_variance) * 100
+    seasonal_pct = (seasonal_variance / total_variance) * 100
+    noise_pct = (noise_variance / total_variance) * 100
+    
+    seasonal_strength_index = (seasonal_variance / (seasonal_variance + trend_variance)) * 100 if (seasonal_variance + trend_variance) > 0 else 0
+    
+    col_ss1, col_ss2 = st.columns(2)
+    with col_ss1:
+        st.metric("Seasonal Strength Index", f"{seasonal_strength_index:.2f}%")
+    with col_ss2:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Holiday Impact</p>
+            <p class="kpi-value">${df[df['ds'].isin(holidays_df['ds'])]['y'].mean():,.2f}</p>
+            <p class="kpi-subtitle">Average holiday revenue</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown(f"**Insight:** The model suggests that **{seasonal_pct:.2f}%** of the observed revenue variability is explained by predictable seasonal patterns, while **{trend_pct:.2f}%** is explained by the long-term trend, and the remaining **{noise_pct:.2f}%** is random noise.")
+    st.markdown("---")
+    
+    # --- Risk & Volatility Insights ---
+    st.subheader("📉 Risk & Volatility Insights")
+    df['rolling_std'] = df['y'].rolling(window=30, min_periods=1).std()
+    df['rolling_mean'] = df['y'].rolling(window=30, min_periods=1).mean()
+    df['volatility_index'] = df['rolling_std'] / df['rolling_mean']
+    
+    fig_volatility = go.Figure(data=[go.Scatter(x=df['ds'], y=df['volatility_index'], mode='lines', name='Revenue Volatility Index', line=dict(color='#d45a5a'))])
+    fig_volatility.update_layout(title="Revenue Volatility Index (30-day Rolling)", yaxis_title="Index", xaxis_title="Date", template="plotly_white")
+    st.plotly_chart(fig_volatility, use_container_width=True)
+    
+    # Revenue Drawdowns
+    df['cumulative_max'] = df['y'].cummax()
+    df['drawdown'] = (df['y'] - df['cumulative_max']) / df['cumulative_max'] * 100
+    max_drawdown = df['drawdown'].min()
+    
+    fig_drawdown = go.Figure(data=[go.Scatter(x=df['ds'], y=df['drawdown'], mode='lines', name='Revenue Drawdown', line=dict(color='orange'))])
+    fig_drawdown.update_layout(title="Revenue Drawdown from Peak (%)", yaxis_title="Drawdown (%)", xaxis_title="Date", template="plotly_white")
+    st.plotly_chart(fig_drawdown, use_container_width=True)
+    st.info(f"The largest revenue drawdown was **{max_drawdown:.2f}%**, indicating the maximum peak-to-trough decline experienced in the historical data.")
+    
+    st.markdown("---")
+    
+    # Anomaly Detection
+    historical_comparison['residuals'] = historical_comparison['y'] - historical_comparison['yhat']
+    residuals_std = historical_comparison['residuals'].std()
+    historical_comparison['z_score'] = historical_comparison['residuals'] / residuals_std
+    anomalies = historical_comparison[abs(historical_comparison['z_score']) > 3] # Flagging anything > 3 std deviations
+    
+    if not anomalies.empty:
+        st.markdown("#### Anomaly Detection")
+        fig_anomalies = go.Figure()
+        fig_anomalies.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Historical Revenue', line=dict(color='#0b6ef6')))
+        fig_anomalies.add_trace(go.Scatter(x=anomalies['ds'], y=anomalies['y'], mode='markers', name='Anomalies', marker=dict(color='red', size=8)))
+        fig_anomalies.update_layout(title="Historical Revenue with Detected Anomalies", yaxis_title="Revenue ($)")
+        st.plotly_chart(fig_anomalies, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --- Financial KPI Insights ---
+    st.subheader("🧾 Financial KPI Insights")
+    
+    col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+    with col_kpi1:
+        # Revenue Run-Rate
+        last_90_days_avg_revenue = df['y'].tail(90).mean()
+        annual_run_rate = last_90_days_avg_revenue * 365
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Annual Run-Rate (ARR)</p>
+                <p class="kpi-value">${annual_run_rate/1000000:,.2f}M</p>
+                <p class="kpi-subtitle">Based on last 90 days</p>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    
+    with col_kpi2:
+        # Growth Target Tracking
+        st.markdown("<p class='kpi-title'>Growth Target Tracking</p>", unsafe_allow_html=True)
+        growth_target_pct = st.number_input("Annual Growth Target (%)", value=15.0, step=1.0, format="%.1f")
+        latest_yoy_growth = df['y'].iloc[-365:].sum() / df['y'].iloc[-730:-365].sum() - 1 if len(df) > 730 else 0
+        
+        target_status = "On Track" if latest_yoy_growth * 100 >= growth_target_pct else "Off Target"
+        status_color = "#1f9d55" if target_status == "On Track" else "#d45a5a"
+        
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Actual YoY Growth</p>
+            <p class="kpi-value" style="color:{status_color};">{latest_yoy_growth*100:,.2f}%</p>
+            <p class="kpi-subtitle">Target: {growth_target_pct:.1f}% ({target_status})</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Revenue Milestones
+    with col_kpi3:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Revenue Milestones</p>
+            <ul>
+                <li>$1M: {df[df['y'].cumsum() >= 1000000]['ds'].min().strftime('%Y-%m-%d')}</li>
+                <li>$5M: {df[df['y'].cumsum() >= 5000000]['ds'].min().strftime('%Y-%m-%d')}</li>
+                <li>$10M: {df[df['y'].cumsum() >= 10000000]['ds'].min().strftime('%Y-%m-%d')}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown("---")
+    
+    # Revenue Concentration by Period
+    st.markdown("#### Revenue Concentration by Period")
+    df_quarterly = df.copy()
+    df_quarterly['year'] = df_quarterly['ds'].dt.year
+    df_quarterly['quarter'] = df_quarterly['ds'].dt.quarter
+    
+    quarterly_rev = df_quarterly.groupby(['year', 'quarter'])['y'].sum().reset_index()
+    quarterly_rev['quarter_str'] = 'Q' + quarterly_rev['quarter'].astype(str)
+    
+    fig_concentration = go.Figure()
+    for year in quarterly_rev['year'].unique():
+        year_data = quarterly_rev[quarterly_rev['year'] == year]
+        total_year_rev = year_data['y'].sum()
+        year_data['pct'] = year_data['y'] / total_year_rev
+        fig_concentration.add_trace(go.Bar(
+            x=year_data['quarter_str'],
+            y=year_data['pct'],
+            name=str(year),
+            hovertemplate='Year: %{name}<br>Quarter: %{x}<br>Percentage: %{y:.1%}<extra></extra>'
+        ))
+    
+    fig_concentration.update_layout(
+        title="Revenue Concentration by Quarter",
+        barmode='stack',
+        yaxis=dict(tickformat=".0%"),
+        yaxis_title="Percentage of Annual Revenue",
+        xaxis_title="Quarter"
+    )
+    st.plotly_chart(fig_concentration, use_container_width=True)
 
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
