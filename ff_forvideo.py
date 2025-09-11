@@ -204,10 +204,6 @@ with st.sidebar:
     else:
         st.error(f"Logo file not found at {LOGO_PATH}")
     
-    st.header("Upload Dataset")
-    uploaded_file = st.file_uploader("Choose a CSV file", type="csv", help="The file must contain 'ds' (date) and 'y' (revenue) columns.")
-    st.markdown("---")
-    
     st.header("⚙️ Settings")
     
     st.subheader("Forecast Period")
@@ -246,16 +242,18 @@ with st.sidebar:
 # --- Main Content Area ---
 st.header("Data & Analysis")
 
-# Main application logic runs only after a file is uploaded
-if uploaded_file is not None:
-    # Read the data from the uploaded file
+# --- MODIFIED: Read CSV directly from repository ---
+CSV_FILE_PATH = "financial_forecast_modified.csv"
+
+# Main application logic runs only if the CSV file exists
+if os.path.exists(CSV_FILE_PATH):
     try:
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(CSV_FILE_PATH)
         # Ensure the 'ds' column is in datetime format and 'y' is numeric
         df['ds'] = pd.to_datetime(df['ds'])
         df['y'] = pd.to_numeric(df['y'])
     except Exception as e:
-        st.error(f"Error reading the file. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
+        st.error(f"Error reading the file from the repository. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
         st.stop()
 
     # Create main content tabs
@@ -894,7 +892,9 @@ if uploaded_file is not None:
         
         st.plotly_chart(components_fig, use_container_width=True)
 else:
-    st.info("Please upload a CSV file from the sidebar to begin forecasting. The file must contain columns named 'ds' (for dates) and 'y' (for revenue).")
+    st.error(f"The required data file '{CSV_FILE_PATH}' was not found in the repository. Please ensure it is present.")
+    st.stop()
+
 
 # --- Watermark at the bottom of the page ---
 st.markdown('<p class="watermark">Created by Gemini for Data Analytics</p>', unsafe_allow_html=True)
