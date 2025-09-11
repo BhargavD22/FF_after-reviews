@@ -40,7 +40,7 @@ st.markdown(
         }}
         
         /* Import Google Font */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.com/css2?family=Inter:wght@400;600;700&display=swap');
         html, body, .stApp {{
             font-family: 'Inter', sans-serif;
         }}
