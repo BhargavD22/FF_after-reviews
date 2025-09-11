@@ -174,6 +174,29 @@ st.markdown(
             font-weight: 600;
             color: #555;
         }}
+        
+        /* New style for query buttons */
+        .query-button {{
+            width: 100%;
+            background-color: #e0e7ff;
+            color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: left;
+            margin: 5px 0;
+            transition: background-color 0.2s, transform 0.2s;
+        }}
+        .query-button:hover {{
+            background-color: #c7d3ff;
+            transform: translateY(-2px);
+        }}
+        .query-button-row {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }}
 
         /* Watermark style */
         .watermark {{
@@ -906,70 +929,131 @@ else:
 # --- WATERMARK ---
 st.markdown('<p class="watermark">Created by Gemini for Data Analytics</p>', unsafe_allow_html=True)
 
-# --- NLP CHATBOT LAYER ---
+# --- NLP CHATBOT LAYER (UPDATED) ---
 st.markdown("---")
 st.markdown('<div id="chatbot"></div>', unsafe_allow_html=True)
 st.header("🤖 Financial Chatbot")
 st.markdown("Ask me questions about your data or the forecast. I'll do my best to help you!")
 
-# Initialize chat history
+# Initialize chat history and query to process
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({"role": "assistant", "content": "Hello! How can I help you with your financial forecast?"})
 
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# A list of pre-written queries for the user to select
+pre_written_queries = [
+    "What is the total historical revenue?",
+    "What is the total forecasted revenue?",
+    "What is the revenue for Feb 2024?",
+    "What is the revenue on 2025-01-08?",
+    "Explain what is WAPE.",
+    "Show me all the outputs I can get.",
+]
 
-# Accept user input
-if prompt := st.chat_input("Ask a question..."):
+# Display pre-written queries as buttons
+st.markdown('<div class="query-button-row">', unsafe_allow_html=True)
+for query in pre_written_queries:
+    # We use a button with a unique key. When clicked, we set the session state's prompt.
+    if st.button(query, key=f"query_button_{query}", help=query):
+        st.session_state.prompt_to_process = query
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Process the prompt from the button click or direct text input
+if "prompt_to_process" in st.session_state and st.session_state.prompt_to_process:
+    prompt = st.session_state.prompt_to_process
+    st.session_state.prompt_to_process = None # Clear the prompt after processing
+elif prompt := st.chat_input("Ask a question..."):
+    pass # Use the direct chat input
+
+# Check if there is a prompt to process
+if 'prompt' in locals():
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     # Display user message in chat message container
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Generate a response based on a simple rule-based NLP system
+    # Generate a response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            # A simple rule-based system to respond to common queries
-            response = "I'm sorry, I don't understand that request. Try asking about 'forecast', 'historical', or 'KPIs'."
-            
-            # Convert prompt to lowercase for case-insensitive matching
             lower_prompt = prompt.lower()
+            response = "I'm sorry, I don't have enough information to answer that question. I can tell you about specific dates, monthly totals, or general trends. Can you rephrase your question?"
 
-            if "hello" in lower_prompt or "hi" in lower_prompt:
-                response = "Hello there! What would you like to know about the financial data?"
+            # --- New logic for date-specific queries ---
+            date_match = re.search(r'(\d{4}[-/]\d{2}[-/]\d{2})', lower_prompt)
+            if date_match:
+                try:
+                    query_date = pd.to_datetime(date_match.group(1))
+                    
+                    # Check historical data first
+                    if not df.empty and query_date in df['ds'].values:
+                        revenue = df[df['ds'] == query_date]['y'].iloc[0]
+                        response = f"The historical revenue for **{query_date.strftime('%Y-%m-%d')}** was approximately **${revenue:,.2f}** thousand."
+                    
+                    # Check forecasted data
+                    elif not forecast.empty and query_date in forecast['ds'].values:
+                        if what_if_enabled:
+                            revenue = forecast[forecast['ds'] == query_date]['yhat_what_if'].iloc[0]
+                            response = f"The forecasted revenue (with what-if scenario) for **{query_date.strftime('%Y-%m-%d')}** is approximately **${revenue:,.2f}** thousand."
+                        else:
+                            revenue = forecast[forecast['ds'] == query_date]['yhat'].iloc[0]
+                            response = f"The forecasted revenue for **{query_date.strftime('%Y-%m-%d')}** is approximately **${revenue:,.2f}** thousand."
+                    
+                    else:
+                        response = f"I could not find revenue data for the date **{query_date.strftime('%Y-%m-%d')}** in either the historical or forecasted periods."
+                except Exception as e:
+                    response = "I couldn't process the date you provided. Please ensure it's in a valid format like YYYY-MM-DD."
             
+            # --- New logic for month-specific queries (e.g., "total revenue for feb") ---
+            month_names = {
+                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+            }
+            month_match = re.search(r'(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)', lower_prompt)
+            if month_match:
+                month_number = month_names[month_match.group(1)]
+                
+                # Check for year in the prompt, otherwise use the last year of data
+                year_match = re.search(r'(\d{4})', lower_prompt)
+                year = int(year_match.group(1)) if year_match else df['ds'].max().year
+                
+                # Filter historical and forecast data for the requested month and year
+                hist_month_data = df[(df['ds'].dt.year == year) & (df['ds'].dt.month == month_number)]
+                
+                # Use the correct forecast column based on the toggle
+                forecast_col_name = 'yhat_what_if' if what_if_enabled else 'yhat'
+                forecast_month_data = forecast[(forecast['ds'].dt.year == year) & (forecast['ds'].dt.month == month_number)]
+
+                if not hist_month_data.empty:
+                    total_revenue = hist_month_data['y'].sum()
+                    response = f"The total historical revenue for **{month_match.group(1).capitalize()} {year}** was approximately **${total_revenue:,.2f}** thousand."
+                elif not forecast_month_data.empty:
+                    total_revenue = forecast_month_data[forecast_col_name].sum()
+                    response = f"The total forecasted revenue for **{month_match.group(1).capitalize()} {year}** is approximately **${total_revenue:,.2f}** thousand."
+                else:
+                    response = f"I could not find revenue data for **{month_match.group(1).capitalize()} {year}**."
+            
+            # --- New logic for specific total revenue queries ---
+            elif "total historical revenue" in lower_prompt:
+                response = f"The total historical revenue is approximately **${total_historical_revenue/1000:,.2f}M**."
+            elif "total forecasted revenue" in lower_prompt:
+                response = f"The total forecasted revenue is approximately **${total_forecasted_revenue/1000:,.2f}M**."
+
+            # --- Existing generic responses (kept for general queries) ---
+            elif any(word in lower_prompt for word in ["hello", "hi"]):
+                response = "Hello there! How can I help you with your financial forecast?"
             elif any(word in lower_prompt for word in ["forecast", "future"]):
                 response = "I can tell you about the forecast. You can scroll down to the 'Daily Revenue Forecast' chart or the 'Forecast Table' to see future predictions. You can also adjust the forecast period using the slider in the sidebar!"
-            
-            elif "historical" in lower_prompt or "past" in lower_prompt:
+            elif any(word in lower_prompt for word in ["historical", "past"]):
                 response = "The historical data can be viewed in the 'Historical Trends' chart and is the basis for the forecast. It shows the actual revenue up to the last available date."
-            
             elif any(word in lower_prompt for word in ["kpis", "metrics", "performance"]):
                 response = "The main KPIs are the total historical and forecasted revenue, as well as the average daily revenue. You can also see a detailed breakdown of model performance in the 'Model Performance' tab."
-
-            elif "help" in lower_prompt or "options" in lower_prompt:
-                response = "Here are a few things you can ask me:\n- Tell me about the **forecast**.\n- What are the **historical** trends?\n- Explain the **KPIs**.\n- What is **WAPE**?"
-
+            elif "outputs" in lower_prompt or "show me" in lower_prompt or "what all" in lower_prompt:
+                response = "I can show you the following outputs:\n- **Core KPIs** (Total & Avg. Revenue)\n- **Growth Metrics** (MoM & YoY)\n- **Charts** (Daily, Cumulative, and Component trends)\n- **Forecast Table**\n- **Model Performance Metrics** (MAE, RMSE, WAPE)"
             elif "wape" in lower_prompt:
                 response = "WAPE stands for Weighted Average Percentage Error. It provides an overall measure of how accurate the forecast is, expressed as a percentage of the total revenue. A lower percentage indicates a more accurate forecast."
-
-            elif any(word in lower_prompt for word in ["revenue", "total", "what is"]):
-                # This is a very basic attempt to handle numerical queries
-                if "total historical revenue" in lower_prompt:
-                    response = f"The total historical revenue is approximately ${total_historical_revenue:,.2f} thousand."
-                elif "total forecasted revenue" in lower_prompt:
-                    response = f"The total forecasted revenue is approximately ${total_forecasted_revenue:,.2f} thousand."
-                else:
-                    response = "I can provide total revenue figures for the historical and forecasted periods. Please be more specific with your query."
-
             elif any(word in lower_prompt for word in ["bye", "thanks", "thank you"]):
                 response = "You're welcome! Feel free to ask if you have more questions."
-
+            
         st.markdown(response)
-    
-    # Add assistant response to chat history
     st.session_state.messages.append({"role": "assistant", "content": response})
