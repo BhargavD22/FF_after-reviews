@@ -204,6 +204,10 @@ with st.sidebar:
     else:
         st.error(f"Logo file not found at {LOGO_PATH}")
     
+    st.header("Upload Dataset")
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv", help="The file must contain 'ds' (date) and 'y' (revenue) columns.")
+    st.markdown("---")
+    
     st.header("⚙️ Settings")
     
     st.subheader("Forecast Period")
@@ -242,18 +246,16 @@ with st.sidebar:
 # --- Main Content Area ---
 st.header("Data & Analysis")
 
-# --- MODIFIED: Read CSV directly from repository ---
-CSV_FILE_PATH = "financial_forecast_modified.csv"
-
-# Main application logic runs only if the CSV file exists
-if os.path.exists(CSV_FILE_PATH):
+# Main application logic runs only after a file is uploaded
+if uploaded_file is not None:
+    # Read the data from the uploaded file
     try:
-        df = pd.read_csv(CSV_FILE_PATH)
+        df = pd.read_csv(uploaded_file)
         # Ensure the 'ds' column is in datetime format and 'y' is numeric
         df['ds'] = pd.to_datetime(df['ds'])
         df['y'] = pd.to_numeric(df['y'])
     except Exception as e:
-        st.error(f"Error reading the file from the repository. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
+        st.error(f"Error reading the file. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
         st.stop()
 
     # Create main content tabs
@@ -495,7 +497,7 @@ if os.path.exists(CSV_FILE_PATH):
             with col7:
                 st.markdown(
                     f"""
-                    <div class="kpi-container kpi-container-historical">
+                    <div class="kpi-container">
                         <p class="kpi-title">Latest Historical MoM Growth</p>
                         <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
                     </div>
@@ -505,7 +507,7 @@ if os.path.exists(CSV_FILE_PATH):
             with col8:
                 st.markdown(
                     f"""
-                    <div class="kpi-container kpi-container-forecasted">
+                    <div class="kpi-container">
                         <p class="kpi-title">Latest Forecasted MoM Growth</p>
                         <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
                     </div>
@@ -518,7 +520,7 @@ if os.path.exists(CSV_FILE_PATH):
             with col9:
                 st.markdown(
                     f"""
-                    <div class="kpi-container kpi-container-historical">
+                    <div class="kpi-container">
                         <p class="kpi-title">Latest Historical YoY Growth</p>
                         <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
                     </div>
@@ -528,7 +530,7 @@ if os.path.exists(CSV_FILE_PATH):
             with col10:
                 st.markdown(
                     f"""
-                    <div class="kpi-container kpi-container-forecasted">
+                    <div class="kpi-container">
                         <p class="kpi-title">Latest Forecasted YoY Growth</p>
                         <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
                     </div>
@@ -892,9 +894,7 @@ if os.path.exists(CSV_FILE_PATH):
         
         st.plotly_chart(components_fig, use_container_width=True)
 else:
-    st.error(f"The required data file '{CSV_FILE_PATH}' was not found in the repository. Please ensure it is present.")
-    st.stop()
-
+    st.info("Please upload a CSV file from the sidebar to begin forecasting. The file must contain columns named 'ds' (for dates) and 'y' (for revenue).")
 
 # --- Watermark at the bottom of the page ---
 st.markdown('<p class="watermark">Created by Gemini for Data Analytics</p>', unsafe_allow_html=True)
