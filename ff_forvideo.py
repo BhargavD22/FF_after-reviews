@@ -870,7 +870,7 @@ else:
     growth_90d = 0.0
 
 # Display KPIs
-col_mom1, col_mom2, col_mom3 = st.columns(3)
+col_mom1, col_mom2, col_mom3 = st.columns(2)
 
 with col_mom1:
     st.markdown(
