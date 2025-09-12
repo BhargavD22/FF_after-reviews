@@ -189,7 +189,6 @@ with st.sidebar:
     )
 
 # --- Data & validation ---
-st.header("Data & Analysis")
 
 if not os.path.exists(CSV_FILE_PATH):
     st.error(f"The required data file '{CSV_FILE_PATH}' was not found in the repository. Please ensure it is present.")
