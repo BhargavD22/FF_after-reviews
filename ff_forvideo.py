@@ -845,72 +845,72 @@ with tab4:
     st.subheader("📈 Growth & Trend Insights")
 
     # --- Revenue Momentum & Acceleration ---
-st.markdown("#### Revenue Momentum & Acceleration")
-
-# Calculate 7-day growth (based on last value vs previous value)
-if len(df) > 7:
-    growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
-else:
-    growth_7d = 0.0
-
-# Calculate 30-day growth (based on last 30 days vs previous 30 days)
-if len(df) > 31:
-    prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
-    curr_30 = df['y'].tail(30).sum()
-    growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
-else:
-    growth_30d = 0.0
-
-# Calculate 90-day growth (based on last 90 days vs previous 90 days)
-if len(df) > 181:
-    prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
-    curr_90 = df['y'].tail(90).sum()
-    growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
-else:
-    growth_90d = 0.0
-
-# Display KPIs
-col_mom1, col_mom2, col_mom3 = st.columns(3)
-
-with col_mom1:
-    st.markdown(
-        f"""
-        <div class="kpi-container">
-            <p class="kpi-title">Latest 7-Day Growth</p>
-            <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
-                {growth_7d:,.2f}%
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-with col_mom2:
-    st.markdown(
-        f"""
-        <div class="kpi-container">
-            <p class="kpi-title">Latest 30-Day Growth</p>
-            <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
-                {growth_30d:,.2f}%
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-with col_mom3:
-    st.markdown(
-        f"""
-        <div class="kpi-container">
-            <p class="kpi-title">Latest 90-Day Growth</p>
-            <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
-                {growth_90d:,.2f}%
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+    st.markdown("#### Revenue Momentum & Acceleration")
+    
+    # Calculate 7-day growth (based on last value vs previous value)
+    if len(df) > 7:
+        growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
+    else:
+        growth_7d = 0.0
+    
+    # Calculate 30-day growth (based on last 30 days vs previous 30 days)
+    if len(df) > 31:
+        prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
+        curr_30 = df['y'].tail(30).sum()
+        growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
+    else:
+        growth_30d = 0.0
+    
+    # Calculate 90-day growth (based on last 90 days vs previous 90 days)
+    if len(df) > 181:
+        prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
+        curr_90 = df['y'].tail(90).sum()
+        growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
+    else:
+        growth_90d = 0.0
+    
+    # Display KPIs
+    col_mom1, col_mom2, col_mom3 = st.columns(3)
+    
+    with col_mom1:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 7-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
+                    {growth_7d:,.2f}%
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with col_mom2:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 30-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
+                    {growth_30d:,.2f}%
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with col_mom3:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 90-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
+                    {growth_90d:,.2f}%
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
 
     # --- Revenue Recovery Analysis ---
     st.markdown("#### Revenue Recovery Analysis")
