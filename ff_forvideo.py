@@ -143,9 +143,9 @@ with st.expander("ℹ️ Quick Guide", expanded=False):
     st.markdown(
         """
         **How to use**
-        1. Configure the forecast horizon and what-if scenario in the sidebar.  
-        2. Explore Forecast and Model Performance tabs.  
-        3. Visit Insights for an auto-summarized recommendation.  
+        1. Configure the forecast horizon and what-if scenario in the sidebar.
+        2. Explore Forecast and Model Performance tabs.
+        3. Visit Insights for an auto-summarized recommendation.
         """
     )
 
@@ -177,13 +177,13 @@ with st.sidebar:
     st.header("🔖 Bookmarks")
     st.markdown(
         """
-        [Core KPIs](#core-kpis)  
-        [Growth Metrics](#growth-metrics)  
-        [Historical Trends](#historical-trends)  
-        [Daily Revenue](#daily-revenue)  
-        [Cumulative Revenue](#cumulative-revenue)  
-        [Forecast Table](#forecast-table)  
-        [Model Performance](#model-performance)  
+        [Core KPIs](#core-kpis)
+        [Growth Metrics](#growth-metrics)
+        [Historical Trends](#historical-trends)
+        [Daily Revenue](#daily-revenue)
+        [Cumulative Revenue](#cumulative-revenue)
+        [Forecast Table](#forecast-table)
+        [Model Performance](#model-performance)
         [Insights](#insights--recommendations)
         """,
         unsafe_allow_html=True
@@ -1037,16 +1037,15 @@ with tab4:
             <p class="kpi-subtitle">Target: {growth_target_pct:.1f}% ({target_status})</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # Revenue Milestones
+
     with col_kpi3:
         st.markdown(f"""
         <div class="kpi-container">
             <p class="kpi-title">Revenue Milestones</p>
             <ul>
-                <li>$1M: {df[df['y'].cumsum() >= 1000000]['ds'].min().strftime('%Y-%m-%d')}</li>
-                <li>$5M: {df[df['y'].cumsum() >= 5000000]['ds'].min().strftime('%Y-%m-%d')}</li>
-                <li>$10M: {df[df['y'].cumsum() >= 10000000]['ds'].min().strftime('%Y-%m-%d')}</li>
+                <li>$1M: {df[df['y'].cumsum() >= 1000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 1000000].empty else "Not yet reached"}</li>
+                <li>$5M: {df[df['y'].cumsum() >= 5000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 5000000].empty else "Not yet reached"}</li>
+                <li>$10M: {df[df['y'].cumsum() >= 10000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 10000000].empty else "Not yet reached"}</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
