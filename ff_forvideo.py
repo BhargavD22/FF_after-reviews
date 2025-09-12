@@ -844,52 +844,73 @@ with tab3:
 with tab4:
     st.subheader("📈 Growth & Trend Insights")
 
-    # --- Revenue Momentum ---
-    st.markdown("#### Revenue Momentum & Acceleration")
-    df_momentum = df.copy()
-    df_momentum['90_day_avg'] = df_momentum['y'].rolling(window=90, min_periods=1).mean()
-    df_momentum['rolling_growth'] = df_momentum['90_day_avg'].pct_change()
-    df_momentum['acceleration'] = df_momentum['rolling_growth'].diff()
-    
-    current_acceleration = df_momentum['acceleration'].iloc[-1]
-    
-    col_mom1, col_mom2, col_mom3 = st.columns(3)
-    with col_mom1:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 7-Day Growth</p>
-                <p class="kpi-value">{df['y'].tail(7).pct_change().iloc[-1] * 100:,.2f}%</p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-    with col_mom2:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 30-Day Growth</p>
-                <p class="kpi-value">{df['y'].tail(30).sum() / df['y'].iloc[-31:-1].sum() - 1 * 100:,.2f}%</p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-    with col_mom3:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 90-Day Growth</p>
-                <p class="kpi-value">{df['y'].tail(90).sum() / df['y'].iloc[-91:-1].sum() - 1 * 100:,.2f}%</p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-    
-    if current_acceleration > 0.001:
-        st.success(f"**Growth is accelerating!** The rate of revenue growth has increased recently. This suggests positive momentum.")
-    elif current_acceleration < -0.001:
-        st.error(f"**Growth is decelerating.** The rate of revenue growth is slowing down, which may warrant investigation.")
-    else:
-        st.info("Growth is relatively stable with little acceleration or deceleration.")
-        
-    st.markdown("---")
+    # --- Revenue Momentum & Acceleration ---
+st.markdown("#### Revenue Momentum & Acceleration")
+
+# Calculate 7-day growth (based on last value vs previous value)
+if len(df) > 7:
+    growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
+else:
+    growth_7d = 0.0
+
+# Calculate 30-day growth (based on last 30 days vs previous 30 days)
+if len(df) > 31:
+    prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
+    curr_30 = df['y'].tail(30).sum()
+    growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
+else:
+    growth_30d = 0.0
+
+# Calculate 90-day growth (based on last 90 days vs previous 90 days)
+if len(df) > 181:
+    prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
+    curr_90 = df['y'].tail(90).sum()
+    growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
+else:
+    growth_90d = 0.0
+
+# Display KPIs
+col_mom1, col_mom2, col_mom3 = st.columns(3)
+
+with col_mom1:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 7-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
+                {growth_7d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_mom2:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 30-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
+                {growth_30d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_mom3:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 90-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
+                {growth_90d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     # --- Revenue Recovery Analysis ---
     st.markdown("#### Revenue Recovery Analysis")
