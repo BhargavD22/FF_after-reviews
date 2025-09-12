@@ -276,39 +276,46 @@ with tab1:
     else:
         cagr_forecast = 0.0
 
-    col_kpi1, col_kpi2 = st.columns([1, 1])
-
-with col_kpi1:
-    st.markdown(
-        f"""
-        <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
-            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+    col_kpi1, col_kpi2 = st.columns(2)
+    with col_kpi1:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Total Historical Revenue</p>
                 <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
                 <p class="kpi-subtitle">Sum of all past revenue</p>
             </div>
-
-            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Avg. Daily Historical Revenue</p>
                 <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
                 <p class="kpi-subtitle">Average daily revenue in the past</p>
             </div>
-
-            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
                 <p class="kpi-title">Historical CAGR</p>
                 <p class="kpi-value">{cagr_hist:,.2%}</p>
                 <p class="kpi-subtitle">Avg. annual growth rate</p>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
 
-with col_kpi2:
-    st.markdown(
-        f"""
-        <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
-            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+    with col_kpi2:
+        st.markdown("#### Forecasted Metrics")
+        delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
+        delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
                 <p class="kpi-title">Total Forecasted Revenue</p>
                 <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
                 <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
@@ -317,8 +324,13 @@ with col_kpi2:
                     <span>{total_revenue_delta:,.2f}% vs. Historical</span>
                 </div>
             </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
                 <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
                 <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
                 <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
@@ -327,8 +339,13 @@ with col_kpi2:
                     <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
                 </div>
             </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
                 <p class="kpi-title">Forecasted CAGR</p>
                 <p class="kpi-value">{cagr_forecast:,.2%}</p>
                 <p class="kpi-subtitle">Avg. annual growth rate</p>
@@ -337,11 +354,11 @@ with col_kpi2:
                     <span>vs. Historical CAGR</span>
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
 
+    st.markdown("---")
 
     # ---- Growth Metrics (MoM & YoY) with monthly chart and arrow markers ----
     with st.expander("📈 Growth Metrics", expanded=True):
@@ -828,72 +845,72 @@ with tab4:
     st.subheader("📈 Growth & Trend Insights")
 
     # --- Revenue Momentum & Acceleration ---
-    st.markdown("#### Revenue Momentum & Acceleration")
-    
-    # Calculate 7-day growth (based on last value vs previous value)
-    if len(df) > 7:
-        growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
-    else:
-        growth_7d = 0.0
-    
-    # Calculate 30-day growth (based on last 30 days vs previous 30 days)
-    if len(df) > 31:
-        prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
-        curr_30 = df['y'].tail(30).sum()
-        growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
-    else:
-        growth_30d = 0.0
-    
-    # Calculate 90-day growth (based on last 90 days vs previous 90 days)
-    if len(df) > 181:
-        prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
-        curr_90 = df['y'].tail(90).sum()
-        growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
-    else:
-        growth_90d = 0.0
-    
-    # Display KPIs
-    col_mom1, col_mom2, col_mom3 = st.columns(3)
-    
-    with col_mom1:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 7-Day Growth</p>
-                <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
-                    {growth_7d:,.2f}%
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    
-    with col_mom2:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 30-Day Growth</p>
-                <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
-                    {growth_30d:,.2f}%
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    
-    with col_mom3:
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Latest 90-Day Growth</p>
-                <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
-                    {growth_90d:,.2f}%
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    
+st.markdown("#### Revenue Momentum & Acceleration")
+
+# Calculate 7-day growth (based on last value vs previous value)
+if len(df) > 7:
+    growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
+else:
+    growth_7d = 0.0
+
+# Calculate 30-day growth (based on last 30 days vs previous 30 days)
+if len(df) > 31:
+    prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
+    curr_30 = df['y'].tail(30).sum()
+    growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
+else:
+    growth_30d = 0.0
+
+# Calculate 90-day growth (based on last 90 days vs previous 90 days)
+if len(df) > 181:
+    prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
+    curr_90 = df['y'].tail(90).sum()
+    growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
+else:
+    growth_90d = 0.0
+
+# Display KPIs
+col_mom1, col_mom2, col_mom3 = st.columns(3)
+
+with col_mom1:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 7-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
+                {growth_7d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_mom2:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 30-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
+                {growth_30d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_mom3:
+    st.markdown(
+        f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Latest 90-Day Growth</p>
+            <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
+                {growth_90d:,.2f}%
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     # --- Revenue Recovery Analysis ---
     st.markdown("#### Revenue Recovery Analysis")
