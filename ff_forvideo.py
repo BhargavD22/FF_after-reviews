@@ -137,7 +137,6 @@ st.markdown(
 
 # --- App header + guide ---
 st.title("📈 Financial Forecasting Dashboard")
-st.markdown("A **dynamic** application to analyze historical revenue data and forecast future trends using the **Prophet** model.")
 
 with st.expander("ℹ️ Quick Guide", expanded=False):
     st.markdown(
