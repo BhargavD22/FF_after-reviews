@@ -277,71 +277,71 @@ with tab1:
         cagr_forecast = 0.0
 
     col_kpi1, col_kpi2 = st.columns([1, 1])
-    
-    with col_kpi1:
-        st.markdown(
-            f"""
-            <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
-                <div class="kpi-container kpi-container-historical" style="height: 100%;">
-                    <p class="kpi-title">Total Historical Revenue</p>
-                    <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
-                    <p class="kpi-subtitle">Sum of all past revenue</p>
-                </div>
-    
-                <div class="kpi-container kpi-container-historical" style="height: 100%;">
-                    <p class="kpi-title">Avg. Daily Historical Revenue</p>
-                    <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
-                    <p class="kpi-subtitle">Average daily revenue in the past</p>
-                </div>
-    
-                <div class="kpi-container kpi-container-historical" style="height: 100%;">
-                    <p class="kpi-title">Historical CAGR</p>
-                    <p class="kpi-value">{cagr_hist:,.2%}</p>
-                    <p class="kpi-subtitle">Avg. annual growth rate</p>
+
+with col_kpi1:
+    st.markdown(
+        f"""
+        <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
+            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+                <p class="kpi-title">Total Historical Revenue</p>
+                <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
+                <p class="kpi-subtitle">Sum of all past revenue</p>
+            </div>
+
+            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+                <p class="kpi-title">Avg. Daily Historical Revenue</p>
+                <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
+                <p class="kpi-subtitle">Average daily revenue in the past</p>
+            </div>
+
+            <div class="kpi-container kpi-container-historical" style="height: 100%;">
+                <p class="kpi-title">Historical CAGR</p>
+                <p class="kpi-value">{cagr_hist:,.2%}</p>
+                <p class="kpi-subtitle">Avg. annual growth rate</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_kpi2:
+    st.markdown(
+        f"""
+        <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
+            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+                <p class="kpi-title">Total Forecasted Revenue</p>
+                <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
+                <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
+                <div class="kpi-delta {delta_class_total}">
+                    <span class="delta-icon">{delta_icon_total}</span>
+                    <span>{total_revenue_delta:,.2f}% vs. Historical</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-    
-    with col_kpi2:
-        st.markdown(
-            f"""
-            <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
-                <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
-                    <p class="kpi-title">Total Forecasted Revenue</p>
-                    <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
-                    <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
-                    <div class="kpi-delta {delta_class_total}">
-                        <span class="delta-icon">{delta_icon_total}</span>
-                        <span>{total_revenue_delta:,.2f}% vs. Historical</span>
-                    </div>
-                </div>
-    
-                <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
-                    <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
-                    <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
-                    <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
-                    <div class="kpi-delta {'positive-delta' if avg_revenue_delta>0 else 'negative-delta'}">
-                        <span class="delta-icon">{'⬆️' if avg_revenue_delta>0 else '⬇️' if avg_revenue_delta<0 else '➡️'}</span>
-                        <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
-                    </div>
-                </div>
-    
-                <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
-                    <p class="kpi-title">Forecasted CAGR</p>
-                    <p class="kpi-value">{cagr_forecast:,.2%}</p>
-                    <p class="kpi-subtitle">Avg. annual growth rate</p>
-                    <div class="kpi-delta {'positive-delta' if cagr_forecast>cagr_hist else 'negative-delta'}">
-                        <span class="delta-icon">{'⬆️' if cagr_forecast>cagr_hist else '⬇️' if cagr_forecast<cagr_hist else '➡️'}</span>
-                        <span>vs. Historical CAGR</span>
-                    </div>
+
+            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+                <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
+                <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
+                <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
+                <div class="kpi-delta {'positive-delta' if avg_revenue_delta>0 else 'negative-delta'}">
+                    <span class="delta-icon">{'⬆️' if avg_revenue_delta>0 else '⬇️' if avg_revenue_delta<0 else '➡️'}</span>
+                    <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-    
+
+            <div class="kpi-container kpi-container-forecasted" style="height: 100%;">
+                <p class="kpi-title">Forecasted CAGR</p>
+                <p class="kpi-value">{cagr_forecast:,.2%}</p>
+                <p class="kpi-subtitle">Avg. annual growth rate</p>
+                <div class="kpi-delta {'positive-delta' if cagr_forecast>cagr_hist else 'negative-delta'}">
+                    <span class="delta-icon">{'⬆️' if cagr_forecast>cagr_hist else '⬇️' if cagr_forecast<cagr_hist else '➡️'}</span>
+                    <span>vs. Historical CAGR</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
     # ---- Growth Metrics (MoM & YoY) with monthly chart and arrow markers ----
     with st.expander("📈 Growth Metrics", expanded=True):
