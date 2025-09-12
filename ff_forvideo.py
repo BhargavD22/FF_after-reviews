@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 from prophet import Prophet
@@ -7,208 +8,233 @@ from prophet.plot import plot_components_plotly
 import base64
 import os
 import streamlit.components.v1 as components
-from datetime import datetime
 
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
-CHAT_ICON_PATH = "miralogo.png"
-CSV_FILE_PATH = "financial_forecast_modified.csv"
 
-# Set Streamlit page config for wide layout + favicon
+# Page settings
 st.set_page_config(
     layout="wide",
     page_title="Financial Forecasting",
-    page_icon=LOGO_PATH,
     initial_sidebar_state="expanded",
 )
 
-# --- helper functions ---
+# --- Helper Functions ---
 def get_image_base64(path):
     if os.path.exists(path):
-        with open(path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode()
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
     return ""
 
-def safe_cagr(first_value, last_value, num_years):
-    try:
-        if num_years <= 0 or first_value <= 0 or last_value <= 0:
-            return 0.0
-        return (last_value / first_value) ** (1.0 / num_years) - 1.0
-    except Exception:
-        return 0.0
-
-def format_currency(val, mode="compact"):
-    if pd.isna(val): return "-"
-    if mode == "full":
-        return f"${val:,.2f}"
-    else:
-        if abs(val) >= 1_000_000:
-            return f"${val/1_000_000:,.2f}M"
-        elif abs(val) >= 1_000:
-            return f"${val/1_000:,.2f}K"
-        else:
-            return f"${val:,.2f}"
+def format_currency(value, compact=True):
+    if compact:
+        if abs(value) >= 1_000_000:
+            return f"${value/1_000_000:.2f}M"
+        elif abs(value) >= 1_000:
+            return f"${value/1_000:.2f}K"
+    return f"${value:,.2f}"
 
 encoded_logo = get_image_base64(LOGO_PATH)
-encoded_chat_icon = get_image_base64(CHAT_ICON_PATH)
 
 # --- Custom CSS ---
 st.markdown(
     """
     <style>
-        html { scroll-behavior: smooth; }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        html, body, .stApp { font-family: 'Inter', sans-serif; background-color:#f6f8fb; color:#222; }
+        html, body, .stApp { font-family: 'Inter', sans-serif; }
+        .stApp { background-color: #f8f9fb; color: #333; }
+        h1, h2, h3, h4 { color: #007bff; }
 
+        /* KPI Card Styles */
         .kpi-container {
-            background: linear-gradient(135deg,#eef6ff,#f2f8ff);
-            padding:1rem; border-radius:12px;
-            box-shadow:0 4px 12px rgba(25,39,64,0.12);
-            margin-bottom:1rem;
+            display: flex; flex-direction: column;
+            background: #fff;
+            padding: 1.25rem; border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+            margin-bottom: 1rem; transition: transform 0.2s;
         }
-        .kpi-container-historical { background:linear-gradient(135deg,#eaf4ff,#eef8ff); }
-        .kpi-container-forecasted { background:linear-gradient(135deg,#e9fbf0,#f7fff7); }
-        .kpi-container-special { background:linear-gradient(135deg,#f3e8ff,#ede9fe); }
-        .kpi-title { font-size:0.9rem; font-weight:600; color:#354251; margin:0; }
-        .kpi-value { font-size:1.6rem; font-weight:700; margin:0.3rem 0; }
-        .positive-delta { color:#1f9d55; }
-        .negative-delta { color:#d45a5a; }
+        .kpi-container:hover { transform: translateY(-3px); }
+        .kpi-title { font-size: 0.9rem; font-weight: 600; color: #555; margin-bottom: 0.5rem; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; margin: 0.2rem 0; }
+        .kpi-subtitle { font-size: 0.8rem; color: #777; }
+        .kpi-delta { font-size: 0.9rem; font-weight: 600; margin-top: 0.5rem; }
+        .positive-delta { color: #28a745; }
+        .negative-delta { color: #dc3545; }
 
-        section[data-testid="stSidebar"] > div:first-child {
-            position: sticky; top: 0; height: calc(100vh - 1rem); overflow-y: auto; padding-bottom: 1rem;
+        .historical { border-left: 6px solid #007bff; }
+        .forecasted { border-left: 6px solid #28a745; }
+        .seasonality { border-left: 6px solid purple; background: #f9f1ff; }
+
+        /* Date Input Styling */
+        div[data-testid="stDateInput"] input {
+            border-radius: 8px; border: 1px solid #ced4da;
+            padding: 8px 12px; font-size: 0.95rem;
+        }
+        div[data-testid="stDateInput"] input:focus {
+            border-color: #007bff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
         }
 
+        /* Watermark */
         .watermark {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            font-size: 13px; color: rgba(0,0,0,0.25); pointer-events: none; z-index: 9999;
+            position: fixed; bottom: 8px; right: 12px;
+            font-size: 13px; color: rgba(0,0,0,0.35);
+            pointer-events: none; z-index: 9999;
         }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# --- Header ---
-st.title("📈 Financial Forecasting Dashboard")
-
-with st.expander("ℹ️ Quick Guide", expanded=False):
-    st.markdown("1. Adjust settings in sidebar\n2. Explore Forecast, Performance, Insights\n3. Use Deep Dive for comparisons")
-
 # --- Sidebar ---
 with st.sidebar:
     if encoded_logo:
         st.image(LOGO_PATH, use_container_width=True)
-
     st.header("⚙️ Settings")
-    forecast_months = st.slider("Forecast Months", min_value=12, max_value=60, value=36)
-    forecast_period_days = forecast_months * 30
 
-    confidence_interval = st.slider("Confidence Interval (%)", 80, 99, 90) / 100
-    weekly_seasonality = st.checkbox("Weekly Seasonality", True)
-    yearly_seasonality = st.checkbox("Yearly Seasonality", True)
+    st.subheader("Forecast Period")
+    forecast_months = st.slider("Select number of months to forecast:", min_value=12, max_value=60, value=36)
+    forecast_days = forecast_months * 30
 
-    what_if_enabled = st.checkbox("What-if Scenario", True)
-    what_if_change = st.number_input("Future Revenue Change (%)", -100.0, 100.0, 0.0, 0.5)
+    st.subheader("Model Config")
+    conf_int = st.slider("Confidence Interval (%)", 80, 99, 90) / 100
+    weekly = st.checkbox("Weekly Seasonality", True)
+    yearly = st.checkbox("Yearly Seasonality", True)
 
-    st.subheader("💵 Display Mode")
-    currency_mode = st.radio("Number Format", ["Compact (K/M)", "Full ($)"], index=0)
-    currency_mode = "compact" if "Compact" in currency_mode else "full"
+    st.subheader("What-if Scenario")
+    what_if = st.checkbox("Apply Scenario", True)
+    pct_change = st.number_input("Future Revenue Change (%)", -100.0, 100.0, 0.0, 0.5)
 
-# --- Data ---
-if not os.path.exists(CSV_FILE_PATH):
-    st.error("CSV file missing")
+    st.subheader("Display")
+    compact_numbers = st.checkbox("Compact Numbers (K/M)", True)
+
+# --- Main Content ---
+st.title("📈 Financial Forecasting Dashboard")
+CSV_FILE = "financial_forecast_modified.csv"
+
+if not os.path.exists(CSV_FILE):
+    st.error(f"File '{CSV_FILE}' not found")
     st.stop()
 
-df = pd.read_csv(CSV_FILE_PATH)
+# Load data
+df = pd.read_csv(CSV_FILE)
 df['ds'] = pd.to_datetime(df['ds'])
 df['y'] = pd.to_numeric(df['y'])
 df['floor'] = 0
 
-# --- Prophet ---
-with st.spinner("Training Prophet..."):
-    holidays_df = pd.DataFrame([
-        {'holiday': 'Product Launch', 'ds': pd.to_datetime('2022-07-15'), 'lower_window': -5, 'upper_window': 5},
-        {'holiday': 'Supply Dip', 'ds': pd.to_datetime('2023-11-20'), 'lower_window': -5, 'upper_window': 5},
-    ])
-    model = Prophet(weekly_seasonality=weekly_seasonality,
-                    yearly_seasonality=yearly_seasonality,
-                    holidays=holidays_df,
-                    growth='linear',
-                    interval_width=confidence_interval)
-    model.fit(df)
-    future = model.make_future_dataframe(periods=forecast_period_days)
-    future['floor'] = 0
-    forecast = model.predict(future)
-    forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100)
+# Prophet holidays
+holidays = pd.DataFrame([
+    {"holiday":"Product Launch Spike","ds":"2022-07-15","lower_window":-5,"upper_window":5},
+    {"holiday":"Supply Chain Dip","ds":"2023-11-20","lower_window":-5,"upper_window":5}
+])
 
-forecast_col = 'yhat_what_if' if what_if_enabled else 'yhat'
+# Fit model
+m = Prophet(weekly_seasonality=weekly, yearly_seasonality=yearly, holidays=holidays, growth='linear')
+m.fit(df)
+future = m.make_future_dataframe(periods=forecast_days)
+future['floor'] = 0
+forecast = m.predict(future)
+forecast['ds'] = pd.to_datetime(forecast['ds'])
+forecast['yhat_what_if'] = forecast['yhat'] * (1 + pct_change/100)
 
-# Combine hist + forecast
-combined_df = pd.concat([
+forecast_col = "yhat_what_if" if what_if else "yhat"
+
+# Combined df
+combined = pd.concat([
     df[['ds','y']].assign(type="Historical"),
     forecast[['ds',forecast_col]].rename(columns={forecast_col:'y'}).assign(type="Forecast")
 ])
 
-# --- Tabs ---
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast","📈 Model Performance","📚 Insights","💡 Deep Dive"])
+# Tabs
+tab1, tab2 = st.tabs(["📊 Forecast", "📈 Model Performance"])
 
-# ---------------- TAB 1 Forecast ----------------
 with tab1:
-    st.subheader("🔑 Core Metrics")
+    st.subheader("🔑 Core KPIs")
+
     hist_total = df['y'].sum()
-    fore_total = forecast.loc[forecast['ds']>df['ds'].max(), forecast_col].sum()
-    fore_mean = forecast.loc[forecast['ds']>df['ds'].max(), forecast_col].mean()
-    hist_mean = df['y'].mean()
+    hist_avg = df['y'].mean()
+    fc_df = forecast[forecast['ds'] > df['ds'].max()]
+    fc_total = fc_df[forecast_col].sum()
+    fc_avg = fc_df[forecast_col].mean()
 
-    c1,c2 = st.columns(2)
-    with c1:
-        st.markdown(f"<div class='kpi-container kpi-container-historical'><p class='kpi-title'>Total Historical</p><p class='kpi-value'>{format_currency(hist_total,currency_mode)}</p></div>",unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"<div class='kpi-container kpi-container-forecasted'><p class='kpi-title'>Total Forecasted</p><p class='kpi-value'>{format_currency(fore_total,currency_mode)}</p></div>",unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"""
+        <div class="kpi-container historical">
+            <p class="kpi-title">Total Historical</p>
+            <p class="kpi-value">{format_currency(hist_total, compact_numbers)}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"""
+        <div class="kpi-container forecasted">
+            <p class="kpi-title">Total Forecasted</p>
+            <p class="kpi-value">{format_currency(fc_total, compact_numbers)}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        seas_strength = round(fc_df[forecast_col].std() / fc_df[forecast_col].mean(),2)
+        st.markdown(f"""
+        <div class="kpi-container seasonality">
+            <p class="kpi-title">Seasonality Index</p>
+            <p class="kpi-value">{seas_strength}</p>
+            <p class="kpi-subtitle">Std Dev / Mean</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # Chart example
+    st.markdown("---")
+
+    # Comparison chart
+    st.subheader("📊 Historical vs Forecast Comparison")
     fig = go.Figure()
-    hist = combined_df[combined_df['type']=="Historical"]
-    fore = combined_df[combined_df['type']=="Forecast"]
-    fig.add_trace(go.Scatter(x=hist['ds'], y=hist['y'], name="Historical", line=dict(color='blue')))
-    fig.add_trace(go.Scatter(x=fore['ds'], y=fore['y'], name="Forecast", line=dict(color='green', dash='dot')))
-    fig.update_layout(yaxis=dict(tickformat="$s"))
-    st.plotly_chart(fig,use_container_width=True)
+    hist = combined[combined['type']=="Historical"]
+    fc = combined[combined['type']=="Forecast"]
 
-# ---------------- TAB 2 Performance ----------------
-with tab2:
-    st.subheader("Model Performance")
-    comp = pd.merge(df, forecast, on="ds")
-    mae = np.mean(np.abs(comp['y']-comp['yhat']))
-    st.markdown(f"<div class='kpi-container'><p class='kpi-title'>MAE</p><p class='kpi-value'>{format_currency(mae,currency_mode)}</p></div>",unsafe_allow_html=True)
-    comp_fig = plot_components_plotly(model,forecast)
-    st.plotly_chart(comp_fig,use_container_width=True)
+    fig.add_trace(go.Scatter(x=hist['ds'], y=hist['y'], name="Historical", line=dict(color="blue")))
+    fig.add_trace(go.Scatter(x=fc['ds'], y=fc['y'], name="Forecasted", line=dict(color="green")))
 
-# ---------------- TAB 3 Insights ----------------
-with tab3:
-    st.subheader("📚 Insights & Recommendations")
-    delta = (fore_total-hist_total)/hist_total*100
-    st.markdown(f"**Historical Total:** {format_currency(hist_total,currency_mode)}")
-    st.markdown(f"**Forecast Total:** {format_currency(fore_total,currency_mode)} ({delta:.2f}% vs Hist)")
-
-# ---------------- TAB 4 Deep Dive ----------------
-with tab4:
-    st.subheader("💡 Historical vs Forecast Deep Dive")
-
-    # Seasonality Index Card
-    st.markdown(
-        f"<div class='kpi-container kpi-container-special'><p class='kpi-title'>Seasonality Strength Index</p><p class='kpi-value'>42.5%</p><p class='kpi-subtitle'>Forecasted vs Historical</p></div>",
-        unsafe_allow_html=True
+    fig.update_layout(
+        xaxis_title="Date",
+        yaxis_title="Revenue",
+        yaxis=dict(tickprefix="$"),
+        template="plotly_white",
+        hovermode="x unified"
     )
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Momentum Graph
-    fig_mom = go.Figure()
-    fig_mom.add_trace(go.Scatter(x=hist['ds'], y=hist['y'], name="Historical", line=dict(color='blue')))
-    fig_mom.add_trace(go.Scatter(x=fore['ds'], y=fore['y'], name="Forecast", line=dict(color='green', dash='dot')))
-    fig_mom.update_layout(yaxis=dict(tickformat="$s"), title="Momentum Comparison")
-    st.plotly_chart(fig_mom,use_container_width=True)
+with tab2:
+    st.subheader("📊 Model Performance")
+    merged = pd.merge(df, forecast, on="ds", how="inner")
+    mae = np.mean(np.abs(merged['y'] - merged['yhat']))
+    rmse = np.sqrt(np.mean((merged['y'] - merged['yhat'])**2))
+    wape = np.sum(np.abs(merged['y']-merged['yhat'])) / np.sum(np.abs(merged['y']))*100
+    bias = np.mean(merged['yhat'] - merged['y'])
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.markdown(f"<div class='kpi-container'><p class='kpi-title'>MAE</p><p class='kpi-value'>{format_currency(mae, compact_numbers)}</p></div>", unsafe_allow_html=True)
+    with col2: st.markdown(f"<div class='kpi-container'><p class='kpi-title'>RMSE</p><p class='kpi-value'>{format_currency(rmse, compact_numbers)}</p></div>", unsafe_allow_html=True)
+    with col3: st.markdown(f"<div class='kpi-container'><p class='kpi-title'>WAPE</p><p class='kpi-value'>{wape:.2f}%</p></div>", unsafe_allow_html=True)
+    with col4: st.markdown(f"<div class='kpi-container'><p class='kpi-title'>Bias</p><p class='kpi-value'>{format_currency(bias, compact_numbers)}</p></div>", unsafe_allow_html=True)
+
+    st.subheader("📉 Components")
+    comp = plot_components_plotly(m, forecast)
+    st.plotly_chart(comp, use_container_width=True)
 
 # --- Watermark ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
-# --- Floating Chat Overlay (unchanged) ---
-# ... keep your existing chat overlay JS block here ...
+# --- Floating Chat Overlay ---
+CHAT_ICON_PATH = "miralogo.png"
+try:
+    with open(CHAT_ICON_PATH,"rb") as f: _CHAT_ICON_B64 = base64.b64encode(f.read()).decode()
+except: _CHAT_ICON_B64 = ""
+
+overlay_html = """
+<script>
+(function () {
+  var host = window.parent.document.body;
+  var div = document.createElement("div"); div.id="chat"; host.appendChild(div);
+  var css = '.btn{position:fixed;bottom:18px;right:18px;width:56px;height:56px;border-radius:50%;background:#fff;border:2px solid #007bff;box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer;}';
+  div.innerHTML='<style>'+css+'</style><button class="btn">💬</button>';
+})();
+</script>
+"""
+components.html(overlay_html, height=0, scrolling=False)
