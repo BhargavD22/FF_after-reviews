@@ -730,6 +730,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Mean Absolute Error (MAE)</p>
                     <p class="kpi-value">${mae:,.2f}</p>
+                    <p class="kpi-subtitle">The average dollar amount the forecast was off by.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -740,6 +741,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
                     <p class="kpi-value">${rmse:,.2f}</p>
+                    <p class="kpi-subtitle">Penalizes larger errors more heavily, useful for spotting major misses.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -750,6 +752,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">WAPE</p>
                     <p class="kpi-value">{wape:,.2f}%</p>
+                    <p class="kpi-subtitle">Provides a single percentage for overall accuracy, making it easy to interpret.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -760,19 +763,13 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Forecast Bias</p>
                     <p class="kpi-value">${forecast_bias:,.2f}</p>
+                    <p class="kpi-subtitle">A positive value means the model is consistently over-forecasting, while a negative value indicates under-forecasting.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-        st.markdown("""
-        **What are these metrics?**
-
-        * **Mean Absolute Error (MAE)**: The average dollar amount the forecast was off by.
-        * **Root Mean Squared Error (RMSE)**: Penalizes larger errors more heavily, useful for spotting major misses.
-        * **WAPE (Weighted Absolute Percentage Error)**: Provides a single percentage for overall accuracy, making it easy to interpret.
-        * **Forecast Bias**: A positive value means the model is consistently over-forecasting, while a negative value indicates under-forecasting.
-        """)
+        
     else:
         st.info("Not enough overlapping historical/prediction data to compute performance metrics.")
 
