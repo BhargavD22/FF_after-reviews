@@ -1067,38 +1067,7 @@ with tab4:
         </div>
         """, unsafe_allow_html=True)
         
-    st.markdown("---")
     
-    # Revenue Concentration by Period
-    st.markdown("#### Revenue Concentration by Period")
-    df_quarterly = df.copy()
-    df_quarterly['year'] = df_quarterly['ds'].dt.year
-    df_quarterly['quarter'] = df_quarterly['ds'].dt.quarter
-    
-    quarterly_rev = df_quarterly.groupby(['year', 'quarter'])['y'].sum().reset_index()
-    quarterly_rev['quarter_str'] = 'Q' + quarterly_rev['quarter'].astype(str)
-    
-    fig_concentration = go.Figure()
-    for year in quarterly_rev['year'].unique():
-        year_data = quarterly_rev[quarterly_rev['year'] == year]
-        total_year_rev = year_data['y'].sum()
-        year_data['pct'] = year_data['y'] / total_year_rev
-        fig_concentration.add_trace(go.Bar(
-            x=year_data['quarter_str'],
-            y=year_data['pct'],
-            name=str(year),
-            hovertemplate='Year: %{name}<br>Quarter: %{x}<br>Percentage: %{y:.1%}<extra></extra>'
-        ))
-    
-    fig_concentration.update_layout(
-        title="Revenue Concentration by Quarter",
-        barmode='stack',
-        yaxis=dict(tickformat=".0%"),
-        yaxis_title="Percentage of Annual Revenue",
-        xaxis_title="Quarter"
-    )
-    st.plotly_chart(fig_concentration, use_container_width=True)
-
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
