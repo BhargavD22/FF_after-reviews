@@ -741,7 +741,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
                     <p class="kpi-value">${rmse:,.2f}</p>
-                    <p class="kpi-subtitle">Penalizes larger errors more heavily, useful for spotting major misses.</p>
+                    <p class="kpi-subtitle">Penalizes larger forecast errors more heavily.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -752,7 +752,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">WAPE</p>
                     <p class="kpi-value">{wape:,.2f}%</p>
-                    <p class="kpi-subtitle">Provides a single percentage for overall accuracy, making it easy to interpret.</p>
+                    <p class="kpi-subtitle">A single percentage for overall forecast accuracy.</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -763,7 +763,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Forecast Bias</p>
                     <p class="kpi-value">${forecast_bias:,.2f}</p>
-                    <p class="kpi-subtitle">A positive value means the model is consistently over-forecasting, while a negative value indicates under-forecasting.</p>
+                    <p class="kpi-subtitle">Indicates consistent over-forecasting (positive) or under-forecasting (negative).</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -777,13 +777,6 @@ with tab2:
     st.subheader("📉 Time Series Components")
     try:
         components_fig = plot_components_plotly(model, forecast)
-        
-        # Update titles for each subplot
-        components_fig.layout.annotations[0]['text'] = 'Overall Trend'
-        components_fig.layout.annotations[1]['text'] = 'Weekly Seasonality'
-        components_fig.layout.annotations[2]['text'] = 'Yearly Seasonality'
-        components_fig.layout.annotations[3]['text'] = 'Holidays' 
-        
         # set y-axis prefixes where possible
         try:
             components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
@@ -792,7 +785,7 @@ with tab2:
         st.plotly_chart(components_fig, use_container_width=True)
     except Exception as e:
         st.info("Could not render components plot: " + str(e))
-    
+   
 # ---------------------- TAB 3: Insights & Recommendations ----------------------
 with tab3:
     st.markdown('<div id="insights--recommendations"></div>', unsafe_allow_html=True)
