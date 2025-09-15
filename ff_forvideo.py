@@ -244,7 +244,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "�
 # ---------------------- TAB 1: Forecast ----------------------
 with tab1:
     # ---- KPIs (Core Business Metrics) ----
- with st.expander("### 🔑 Core Business Metrics", expanded=True):
+  with st.expander("### 🔑 Core Business Metrics", expanded=True):
     st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
     #st.markdown("### 🔑 Core Business Metrics")
     total_historical_revenue = df['y'].sum()
