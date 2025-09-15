@@ -138,16 +138,6 @@ st.markdown(
 # --- App header + guide ---
 st.title("📈 Financial Forecasting Dashboard")
 
-with st.expander("ℹ️ Quick Guide", expanded=False):
-    st.markdown(
-        """
-        **How to use**
-        1. Configure the forecast horizon and what-if scenario in the sidebar.
-        2. Explore Forecast and Model Performance tabs.
-        3. Visit Insights for an auto-summarized recommendation.
-        """
-    )
-
 # --- Sidebar controls (sticky) ---
 with st.sidebar:
     # logo
@@ -203,7 +193,7 @@ except Exception as e:
     st.stop()
 
 # --- Fit Prophet model with spinner (loading indicator) ---
-with st.spinner("Training Prophet model and generating forecast..."):
+with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     holidays_df = pd.DataFrame([
         {'holiday': 'Product Launch Spike', 'ds': pd.to_datetime('2022-07-15'), 'lower_window': -5, 'upper_window': 5},
         {'holiday': 'Supply Chain Dip', 'ds': pd.to_datetime('2023-11-20'), 'lower_window': -5, 'upper_window': 5},
@@ -276,6 +266,7 @@ with tab1:
 
     col_kpi1, col_kpi2 = st.columns(2)
     with col_kpi1:
+        st.markdown("#### Historical Metrics")
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-historical">
