@@ -276,6 +276,7 @@ with tab1:
 
     col_kpi1, col_kpi2 = st.columns(2)
     with col_kpi1:
+        st.markdown("#### Historical Metrics")
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-historical">
