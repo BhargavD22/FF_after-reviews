@@ -779,7 +779,7 @@ with tab2:
         components_fig = plot_components_plotly(model, forecast)
         # set y-axis prefixes where possible
         try:
-            components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
+            components_fig.update_yaxes(title_text='Revenue', tickprefix='$')
         except Exception:
             pass
         st.plotly_chart(components_fig, use_container_width=True)
@@ -866,6 +866,7 @@ with tab4:
                 <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
                     {growth_7d:,.2f}%
                 </p>
+                <p class="kpi-subtitle">Revenue change over the last 7 days.</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -879,6 +880,7 @@ with tab4:
                 <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
                     {growth_30d:,.2f}%
                 </p>
+                <p class="kpi-subtitle">Revenue change by comparing the last 30 days to the prior 30 days.</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -892,6 +894,7 @@ with tab4:
                 <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
                     {growth_90d:,.2f}%
                 </p>
+                <p class="kpi-subtitle">Revenue change by comparing the last 90 days to the prior 90 days.</p>
             </div>
             """,
             unsafe_allow_html=True
