@@ -135,18 +135,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- App header + guide ---
+# --- App header ---
 st.title("📈 Financial Forecasting Dashboard")
 
-with st.expander("ℹ️ Quick Guide", expanded=False):
-    st.markdown(
-        """
-        **How to use**
-        1. Configure the forecast horizon and what-if scenario in the sidebar.
-        2. Explore Forecast and Model Performance tabs.
-        3. Visit Insights for an auto-summarized recommendation.
-        """
-    )
+
 
 # --- Sidebar controls (sticky) ---
 with st.sidebar:
