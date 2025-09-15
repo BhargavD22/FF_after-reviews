@@ -962,7 +962,14 @@ with tab4:
     
     col_ss1, col_ss2 = st.columns(2)
     with col_ss1:
-        st.metric("Seasonal Strength Index", f"{seasonal_strength_index:.2f}%")
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Seasonal Strength Index</p>
+                <p class="kpi-value">{seasonal_strength_index:.2f}%</p>
+                <p class="kpi-subtitle">Variability explained by seasonality</p>
+            </div>
+            """, unsafe_allow_html=True)
     with col_ss2:
         st.markdown(f"""
         <div class="kpi-container">
