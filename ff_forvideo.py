@@ -779,7 +779,7 @@ with tab2:
         components_fig = plot_components_plotly(model, forecast)
         # set y-axis prefixes where possible
         try:
-            components_fig.update_yaxes(title_text='Revenue (in thousands of $)', tickprefix='$')
+            components_fig.update_yaxes(title_text='Revenue', tickprefix='$')
         except Exception:
             pass
         st.plotly_chart(components_fig, use_container_width=True)
