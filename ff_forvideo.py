@@ -763,7 +763,7 @@ with tab2:
                 <div class="kpi-container">
                     <p class="kpi-title">Forecast Bias</p>
                     <p class="kpi-value">${forecast_bias:,.2f}</p>
-                    <p class="kpi-subtitle">Indicates consistent over-forecasting (positive) or under-forecasting (negative).</p>
+                    <p class="kpi-subtitle">Indicates consistent over-forecasting (+) or under-forecasting (-).</p>
                 </div>
                 """,
                 unsafe_allow_html=True
