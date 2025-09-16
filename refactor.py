@@ -68,15 +68,15 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
-
+st.sidebar.header("⚙️ Configuration")
 
 # Add Company Logo
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
-    st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
-st.sidebar.header("⚙️ Configuration")
+    st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
+
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -133,6 +133,7 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
+st.header("🔮 Forecasted Revenue Outlook")
 
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
@@ -228,9 +229,18 @@ with col2_hist:
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Daily Revenue', line=dict(color='#888888')))
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines',
                                 name='30-Day Moving Average', line=dict(color='#3498db', width=3)))
+    
+    # Moved the legend to the top-left to prevent cramping
     fig_ma.update_layout(
         xaxis_title="Date",
-        yaxis_title="Revenue ($)"
+        yaxis_title="Revenue ($)",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0
+        )
     )
     st.plotly_chart(fig_ma, use_container_width=True)
 
@@ -245,7 +255,7 @@ forecast_display = forecast_display.rename(columns={
 })
 
 # Display the modified dataframe
-st.dataframe(forecast_display.tail(30))
+st.dataframe(forecast_display.tail(30), use_container_width=True)
 
 st.download_button(
     label="Download Forecast Data (CSV)",
