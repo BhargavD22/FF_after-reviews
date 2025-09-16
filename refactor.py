@@ -103,6 +103,7 @@ st.title("🔮 Financial Forecasting Dashboard")
 
 
 # Updated placeholder dataset to generate realistic dips and spikes
+
 @st.cache_data
 def load_data():
     dates = pd.date_range(start="2021-01-01", end="2024-12-31", freq="D")
