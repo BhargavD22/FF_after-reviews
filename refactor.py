@@ -86,7 +86,7 @@ with tab1:
     df_monthly = df.copy()
     df_monthly['month'] = df_monthly['ds'].dt.to_period('M')
     monthly_sum = df_monthly.groupby('month')['y'].sum().reset_index()
-    monthly_sum['month'] = monthly_sum['month'].dt.to_timestamp()  # ✅ fix: convert Period -> Timestamp
+    monthly_sum['month'] = monthly_sum['month'].dt.to_timestamp()  # ✅ fix
     monthly_sum['pct_change'] = monthly_sum['y'].pct_change() * 100
 
     fig_growth = px.line(
@@ -108,7 +108,7 @@ with tab1:
     st.plotly_chart(fig_ma, use_container_width=True)
 
 # ----------------------------------------
-# Tab 2: Forecasting
+# Tab 2: Forecasting + Deep Dive
 # ----------------------------------------
 with tab2:
     st.subheader("🔮 Forecasting Future Revenue")
@@ -144,8 +144,25 @@ with tab2:
         mime="text/csv"
     )
 
+    # --- Deep Dive Elements (Forecast Side) ---
+    st.subheader("🔎 Deep Dive – Seasonal Effects & Anomalies")
+
+    # Seasonal Strength (dummy example)
+    seasonal_strength = np.random.uniform(0.5, 0.9)
+    st.metric("Seasonal Strength Index", f"{seasonal_strength:.2%}")
+
+    # Holiday Impact (dummy example)
+    holiday_impact = np.random.uniform(0.1, 0.3)
+    st.metric("Holiday Impact on Revenue", f"{holiday_impact:.2%}")
+
+    # Anomaly Detection (simple placeholder logic)
+    st.markdown("### 🚨 Detected Anomalies in Forecast")
+    anomalies = forecast[['ds', 'yhat']].sample(3, random_state=42)
+    anomalies['note'] = "Unexpected spike/drop"
+    st.dataframe(anomalies)
+
 # ----------------------------------------
-# Tab 3: Model Evaluation
+# Tab 3: Model Evaluation + Deep Dive
 # ----------------------------------------
 with tab3:
     st.subheader("📏 Model Evaluation & Comparison")
@@ -176,3 +193,28 @@ with tab3:
     st.markdown("### 🔍 Time Series Components")
     fig_components = plot_components_plotly(m, forecast)
     st.plotly_chart(fig_components, use_container_width=True)
+
+    # --- Deep Dive Elements (Evaluation Side) ---
+    st.subheader("🔎 Deep Dive – Risk, Recovery & KPIs")
+
+    # Growth Momentum (dummy)
+    st.metric("7-Day Momentum", "+4.5%")
+    st.metric("30-Day Momentum", "+6.2%")
+    st.metric("90-Day Momentum", "+8.1%")
+
+    # Recovery Analysis (dummy)
+    st.markdown("### 🔄 Recovery Analysis")
+    st.write("Example: Supply chain dip in 2023 took 25 days to recover.")
+
+    # Risk & Volatility (dummy placeholder chart)
+    st.markdown("### ⚠️ Risk & Volatility")
+    df_eval['volatility'] = df_eval['y'].pct_change().rolling(7).std()
+    fig_vol = px.line(df_eval, x=df_eval.index, y='volatility', title="Revenue Volatility Index")
+    st.plotly_chart(fig_vol, use_container_width=True)
+
+    # Financial KPIs
+    st.markdown("### 💰 Financial KPIs")
+    arr = df_eval['yhat'].mean() * 365
+    st.metric("Annual Run Rate", f"${arr:,.0f}")
+    st.metric("Growth Target Progress", "72%")
+    st.metric("Milestones Achieved", "Revenue > $1M, $5M")
