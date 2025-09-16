@@ -97,7 +97,7 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 # ----------------------------------------
 # Main Content - Storytelling Scroll Layout
 # --------------------------------------
-st.title("🔮 Financial Forecasting (Revenue) - Dashboard Analytics")
+st.title("🔮 Financial Forecasting (Revenue)")
 # Updated placeholder dataset to generate better metrics
 @st.cache_data
 def load_data():
@@ -148,10 +148,6 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
-st.sidebar.markdown("---")
-st.header(" Forecasted Revenue Outlook")
-st.sidebar.markdown("---")
-
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
 
