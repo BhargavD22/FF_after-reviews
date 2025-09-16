@@ -150,7 +150,9 @@ with col3:
 
 
 # Main forecast chart with interactive capabilities
+st.markdown("---")
 st.subheader("📅 Daily Revenue Forecast with Confidence Interval")
+st.markdown("---")
 fig_forecast = plot_plotly(m, forecast)
 fig_forecast.update_layout(
     height=500,
@@ -158,12 +160,13 @@ fig_forecast.update_layout(
     yaxis_title="Revenue ($)"
 )
 st.plotly_chart(fig_forecast, use_container_width=True)
-st.markdown("---")
-st.markdown("---")
+
 # ----------------------------------------
 # 3. The "Why": Model Components
 # ----------------------------------------
+st.markdown("---")
 st.header("🧠 Understanding the Forecast: Time Series Components")
+st.markdown("---")
 fig_components = plot_components_plotly(m, forecast)
 fig_components.update_layout(
     yaxis_title="Effect ($)",
@@ -174,7 +177,9 @@ st.markdown("---")
 # ----------------------------------------
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
+st.markdown("---")
 st.header("📏 Model Performance and Accuracy")
+st.markdown("---")
 
 df_eval = forecast.set_index('ds').join(df.set_index('ds'))
 df_eval = df_eval.dropna()
@@ -204,7 +209,9 @@ st.markdown("---")
 # ----------------------------------------
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
+st.markdown("---")
 st.header("📊 Deeper Dive: Historical Trends")
+st.markdown("---")
 
 # Calculate historical metrics
 df_yoy_hist = df.set_index('ds').resample('M')['y'].sum()
