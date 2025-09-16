@@ -86,8 +86,16 @@ with tab1:
     df_monthly = df.copy()
     df_monthly['month'] = df_monthly['ds'].dt.to_period('M')
     monthly_sum = df_monthly.groupby('month')['y'].sum().reset_index()
+    monthly_sum['month'] = monthly_sum['month'].dt.to_timestamp()  # ✅ fix: convert Period -> Timestamp
     monthly_sum['pct_change'] = monthly_sum['y'].pct_change() * 100
-    fig_growth = px.line(monthly_sum, x='month', y='pct_change', title="Month-over-Month Growth (%)")
+
+    fig_growth = px.line(
+        monthly_sum,
+        x='month',
+        y='pct_change',
+        title="Month-over-Month Growth (%)",
+        markers=True
+    )
     st.plotly_chart(fig_growth, use_container_width=True)
 
     # 30-day moving average
@@ -95,7 +103,8 @@ with tab1:
     df['30d_ma'] = df['y'].rolling(window=30).mean()
     fig_ma = go.Figure()
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Daily Revenue'))
-    fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines', name='30-Day Moving Average', line=dict(color='orange')))
+    fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines',
+                                name='30-Day Moving Average', line=dict(color='orange')))
     st.plotly_chart(fig_ma, use_container_width=True)
 
 # ----------------------------------------
@@ -157,8 +166,10 @@ with tab3:
     # Historical vs Forecasted Comparison
     st.markdown("### 📊 Historical vs Forecasted Revenue")
     fig_compare = go.Figure()
-    fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['y'], mode='lines', name='Historical'))
-    fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['yhat'], mode='lines', name='Forecasted'))
+    fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['y'],
+                                     mode='lines', name='Historical'))
+    fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['yhat'],
+                                     mode='lines', name='Forecasted'))
     st.plotly_chart(fig_compare, use_container_width=True)
 
     # Component Plots
