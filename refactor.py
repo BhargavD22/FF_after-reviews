@@ -68,20 +68,17 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
-
+st.sidebar.header("⚙️ Configuration")
 
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
-    
-st.sidebar.header("⚙️ Configuration")
 
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
-
 
 confidence_interval = st.sidebar.slider(
     "Confidence Interval", 0.80, 0.99, 0.95
@@ -103,6 +100,7 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 
 # 1. Header and Executive Summary
 st.title("🔮 Financial Forecasting Dashboard")
+
 
 # Updated placeholder dataset to generate realistic dips and spikes
 @st.cache_data
@@ -133,14 +131,17 @@ def load_data():
     df['y'] = base_revenue + yearly_cycle + weekday_effect + noise
     
     # Introduce random, significant anomalies (e.g., sudden sales, unexpected issues)
-    num_anomalies = 10
-    anomaly_indices = np.random.choice(len(df), num_anomalies, replace=False)
-    for idx in anomaly_indices:
-        # Randomly make it a spike or a dip
-        if np.random.rand() > 0.5:
-            df.loc[idx, 'y'] *= np.random.uniform(1.2, 1.8) # 20% to 80% spike
-        else:
-            df.loc[idx, 'y'] *= np.random.uniform(0.3, 0.7) # 30% to 70% dip
+    num_anomalies_per_year = 3 
+    years = df['ds'].dt.year.unique()
+    for year in years:
+        year_df = df[df['ds'].dt.year == year]
+        anomaly_indices = np.random.choice(year_df.index, num_anomalies_per_year, replace=False)
+        for idx in anomaly_indices:
+            # Randomly make it a spike or a dip
+            if np.random.rand() > 0.5:
+                df.loc[idx, 'y'] *= np.random.uniform(1.5, 2.5) # 50% to 150% spike
+            else:
+                df.loc[idx, 'y'] *= np.random.uniform(0.1, 0.5) # 50% to 90% dip
             
     # Ensure all values are positive and set a minimum
     df['y'] = df['y'].apply(lambda x: max(x, 1000)) # Minimum revenue of 1000
@@ -154,7 +155,7 @@ m = Prophet(
     interval_width=confidence_interval,
     weekly_seasonality=weekly_seasonality,
     yearly_seasonality=yearly_seasonality,
-    seasonality_mode='multiplicative' # Often works well with growing trends and seasonality
+    seasonality_mode='multiplicative'
 )
 m.fit(df)
 future = m.make_future_dataframe(periods=forecast_periods * 30)
@@ -169,7 +170,7 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # 2. The Main Event: The Forecast
 # ----------------------------------------
 st.sidebar.markdown("---")
-st.header("⌚ Forecasted Revenue Outlook")
+st.header(" Forecasted Revenue Outlook")
 st.sidebar.markdown("---")
 
 # Display key forecasted metrics
