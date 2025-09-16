@@ -97,7 +97,7 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 # ----------------------------------------
 # Main Content - Storytelling Scroll Layout
 # --------------------------------------
-
+st.title("🔮 Financial Forecasting (Revenue) - Dashboard Analytics")
 # Updated placeholder dataset to generate better metrics
 @st.cache_data
 def load_data():
