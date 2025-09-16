@@ -5,6 +5,7 @@ from prophet import Prophet
 from prophet.plot import plot_plotly, plot_components_plotly
 import plotly.express as px
 import plotly.graph_objects as go
+from PIL import Image
 
 # ----------------------------------------
 # Inject Custom CSS for a clean, modern look
@@ -51,24 +52,43 @@ st.set_page_config(
 )
 
 # ----------------------------------------
+# Sidebar for user input & logo
+# ----------------------------------------
+st.sidebar.header("⚙️ Configuration")
+
+# Add Company Logo
+try:
+    logo = Image.open('your_logo.png') # Replace 'your_logo.png' with your logo's filename
+    st.sidebar.image(logo, use_column_width=True)
+except FileNotFoundError:
+    st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
+
+forecast_periods = st.sidebar.slider(
+    "Forecast Horizon (Months):", 12, 24, 36
+)
+
+confidence_interval = st.sidebar.slider(
+    "Confidence Interval", 0.80, 0.99, 0.95
+)
+
+# ----------------------------------------
+# Add the "What If" Scenario Slider
+# ----------------------------------------
+st.sidebar.markdown("---")
+st.sidebar.header("What If Scenario")
+revenue_change_pct = st.sidebar.slider(
+    "Simulate Revenue Change (%)", -25, 25, 0, format="%d%%"
+)
+
+weekly_seasonality = st.sidebar.checkbox("Include Weekly Seasonality", True)
+yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
+
+# ----------------------------------------
 # Main Content - Storytelling Scroll Layout
 # ----------------------------------------
 
 # 1. Header and Executive Summary
 st.title("🔮 Financial Forecasting Dashboard")
-# ----------------------------------------
-# Sidebar for user input
-# ----------------------------------------
-st.sidebar.header("⚙️ Configuration")
-forecast_periods = st.sidebar.slider(
-    "Forecast Horizon (Months):", 12, 24, 36
-)
-confidence_interval = st.sidebar.slider(
-    "Confidence Interval", 0.80, 0.99, 0.95
-)
-weekly_seasonality = st.sidebar.checkbox("Include Weekly Seasonality", True)
-yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
-
 # Placeholder dataset (replace with your actual data loading)
 @st.cache_data
 def load_data():
@@ -89,6 +109,11 @@ m.fit(df)
 future = m.make_future_dataframe(periods=forecast_periods * 30)
 forecast = m.predict(future)
 
+# Apply "What If" scenario
+forecast['yhat'] = forecast['yhat'] * (1 + revenue_change_pct / 100)
+forecast['yhat_lower'] = forecast['yhat_lower'] * (1 + revenue_change_pct / 100)
+forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
+
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
@@ -97,17 +122,24 @@ st.header("🔮 Forecasted Revenue Outlook")
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
 with col1:
-    forecasted_rev = forecast['yhat'][-forecast_periods*30:].sum()
-    st.metric("Forecasted Revenue", f"${forecasted_rev:,.0f}")
-with col2:
-    avg_forecast_daily = forecast['yhat'][-forecast_periods*30:].mean()
-    st.metric("Forecasted Daily Average", f"${avg_forecast_daily:,.2f}")
-with col3:
+    # Use CAGR for percentage display
     if len(forecast) > 1 and len(df) > 1:
         proj_cagr = ((forecast['yhat'].iloc[-1] / df['y'].iloc[0]) ** (1/(len(forecast)/365))) - 1
     else:
         proj_cagr = 0
     st.metric("Projected CAGR", f"{proj_cagr:.2%}")
+
+with col2:
+    # Calculate YOY growth for percentage display
+    df_yoy = forecast.set_index('ds').resample('M')['yhat'].sum()
+    yoy_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-13]) - 1 if len(df_yoy) >= 13 else 0
+    st.metric("YoY Forecast Growth", f"{yoy_growth:.2%}")
+
+with col3:
+    # Calculate M-o-M growth for percentage display
+    mom_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-2]) - 1 if len(df_yoy) >= 2 else 0
+    st.metric("Month-over-Month Growth", f"{mom_growth:.2%}")
+
 
 # Main forecast chart with interactive capabilities
 st.subheader("📅 Daily Revenue Forecast with Confidence Interval")
@@ -119,11 +151,7 @@ st.plotly_chart(fig_forecast, use_container_width=True)
 # 3. The "Why": Model Components
 # ----------------------------------------
 st.header("🧠 Understanding the Forecast: Time Series Components")
-st.write(
-    "Prophet's model breaks down the forecast into its core components to reveal "
-    "the underlying patterns driving the predictions. This helps explain **why** "
-    "the forecast looks the way it does."
-)
+
 fig_components = plot_components_plotly(m, forecast)
 st.plotly_chart(fig_components, use_container_width=True)
 
@@ -131,11 +159,6 @@ st.plotly_chart(fig_components, use_container_width=True)
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
 st.header("📏 Model Performance and Accuracy")
-st.write(
-    "Model evaluation metrics provide confidence in the forecast. Here, we compare "
-    "the model's predictions against historical data to assess its accuracy."
-)
-
 df_eval = forecast.set_index('ds').join(df.set_index('ds'))
 df_eval = df_eval.dropna()
 
@@ -160,10 +183,7 @@ st.plotly_chart(fig_compare, use_container_width=True)
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
 st.header("📊 Deeper Dive: Historical Trends")
-st.write(
-    "Explore the raw historical data and its trends, which serve as the foundation "
-    "for the predictive model."
-)
+
 col1_hist, col2_hist = st.columns(2)
 with col1_hist:
     st.markdown("#### Month-over-Month Growth (%)")
