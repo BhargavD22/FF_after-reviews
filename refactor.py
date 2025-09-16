@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Retail & E-Commerce Financial Forecasting Dashboard")
+st.title("📊 Financial Forecasting (Revenue) - Dashboard Analytics")
 
 # ----------------------------------------
 # Sidebar Controls
