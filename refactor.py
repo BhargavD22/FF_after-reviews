@@ -75,10 +75,13 @@ try:
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
+    
 st.sidebar.header("⚙️ Configuration")
+
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
+
 
 confidence_interval = st.sidebar.slider(
     "Confidence Interval", 0.80, 0.99, 0.95
@@ -96,35 +99,51 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 
 # ----------------------------------------
 # Main Content - Storytelling Scroll Layout
-# --------------------------------------
-st.title("🔮 Financial Forecasting (Revenue)")
-# Updated placeholder dataset to generate better metrics
+# ----------------------------------------
+
+# 1. Header and Executive Summary
+st.title("🔮 Financial Forecasting Dashboard")
+
+# Updated placeholder dataset to generate realistic dips and spikes
 @st.cache_data
 def load_data():
     dates = pd.date_range(start="2021-01-01", end="2024-12-31", freq="D")
     df = pd.DataFrame({"ds": dates})
     
-    # Create a base trend with a slight upward curve
-    df['y'] = 1000 + 1.5 * np.arange(len(df)) + 0.005 * np.arange(len(df))**2
+    # Base trend with some growth and fluctuation
+    base_revenue = 10000 + 5 * np.arange(len(df)) + 0.002 * np.arange(len(df))**2
     
-    # Add yearly seasonality (e.g., Q4 spike)
-    df['yearly_factor'] = np.sin(2 * np.pi * (df['ds'].dt.dayofyear - 1) / 365.25)
-    df['y'] += df['yearly_factor'] * (300 + 0.5 * np.arange(len(df)))
+    # Strong yearly seasonality (e.g., holiday season peak)
+    yearly_cycle = 8000 * np.sin(2 * np.pi * (df['ds'].dt.dayofyear - 300) / 365.25)
     
-    # Add weekly seasonality (e.g., weekends are slower)
-    df['weekday'] = df['ds'].dt.dayofweek
-    df['y'] += df['weekday'].apply(lambda x: 100 if x < 5 else -150)
+    # Weekly seasonality (e.g., lower on weekends, higher mid-week)
+    weekday_effect = df['ds'].dt.dayofweek.apply(lambda x: {
+        0: 500,  # Monday
+        1: 800,  # Tuesday
+        2: 1000, # Wednesday (peak)
+        3: 700,  # Thursday
+        4: 200,  # Friday
+        5: -1000, # Saturday (dip)
+        6: -800   # Sunday (dip)
+    }.get(x, 0))
+
+    # Add controlled high-frequency noise for realistic "spikes and dips"
+    noise = np.random.normal(0, 1500, len(df)) # Larger std dev for more pronounced spikes/dips
     
-    # Add high-frequency noise for a more "stock market" feel
-    df['y'] += np.random.normal(0, 100, len(df))
+    df['y'] = base_revenue + yearly_cycle + weekday_effect + noise
     
-    # Introduce random anomalies (spikes or drops)
-    anomaly_dates = df.sample(n=5, random_state=42)['ds'].values
-    for date in anomaly_dates:
-        df.loc[df['ds'] == date, 'y'] *= np.random.uniform(0.5, 1.5)
-        
-    # Ensure all values are positive
-    df['y'] = df['y'].abs()
+    # Introduce random, significant anomalies (e.g., sudden sales, unexpected issues)
+    num_anomalies = 10
+    anomaly_indices = np.random.choice(len(df), num_anomalies, replace=False)
+    for idx in anomaly_indices:
+        # Randomly make it a spike or a dip
+        if np.random.rand() > 0.5:
+            df.loc[idx, 'y'] *= np.random.uniform(1.2, 1.8) # 20% to 80% spike
+        else:
+            df.loc[idx, 'y'] *= np.random.uniform(0.3, 0.7) # 30% to 70% dip
+            
+    # Ensure all values are positive and set a minimum
+    df['y'] = df['y'].apply(lambda x: max(x, 1000)) # Minimum revenue of 1000
     
     return df
 
@@ -134,7 +153,8 @@ df = load_data()
 m = Prophet(
     interval_width=confidence_interval,
     weekly_seasonality=weekly_seasonality,
-    yearly_seasonality=yearly_seasonality
+    yearly_seasonality=yearly_seasonality,
+    seasonality_mode='multiplicative' # Often works well with growing trends and seasonality
 )
 m.fit(df)
 future = m.make_future_dataframe(periods=forecast_periods * 30)
@@ -148,6 +168,10 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
+st.sidebar.markdown("---")
+st.header("⌚ Forecasted Revenue Outlook")
+st.sidebar.markdown("---")
+
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
 
