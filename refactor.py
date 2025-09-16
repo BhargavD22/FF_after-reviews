@@ -68,13 +68,15 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
-st.sidebar.header("⚙️ Configuration")
+
 
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
+
+st.sidebar.header("⚙️ Configuration")
 
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
