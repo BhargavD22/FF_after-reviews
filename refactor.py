@@ -56,14 +56,6 @@ st.set_page_config(
 
 # 1. Header and Executive Summary
 st.title("🔮 Financial Forecasting Dashboard")
-st.subheader("Revenue Projections & Analytics")
-
-st.write(
-    "This dashboard provides a comprehensive revenue forecast, "
-    "empowering strategic decision-making with data-driven insights. "
-    "Use the sidebar to interact with the forecast."
-)
-
 # ----------------------------------------
 # Sidebar for user input
 # ----------------------------------------
