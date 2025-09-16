@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from PIL import Image
 
 # ----------------------------------------
-# Inject Custom CSS for a clean, modern look and vibrant KPIs
+# Inject Custom CSS for a clean, modern look and blue-themed KPIs
 # ----------------------------------------
 st.markdown(
     """
@@ -19,7 +19,7 @@ st.markdown(
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     .stButton>button {
-        background-color: #4CAF50; /* Green button */
+        background-color: #3498db; /* Blue button */
         color: white;
         border-radius: 5px;
         border: none;
@@ -29,7 +29,7 @@ st.markdown(
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        border-left: 5px solid #4CAF50; /* Green border on the left */
+        border-left: 5px solid #3498db; /* Blue border on the left */
         margin-bottom: 15px;
     }
     .stMetric > div[data-testid="stMetricLabel"] {
@@ -68,14 +68,15 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
+st.sidebar.header("⚙️ Configuration")
 
 # Add Company Logo
 try:
-    logo = Image.open('miracle-logo-dark.png')  # Replace with your logo's filename
+    logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
-st.sidebar.header("⚙️ Configuration")
+
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -104,13 +105,7 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 st.title("🔮 Financial Forecasting Dashboard")
 st.subheader("Revenue Projections & Analytics")
 
-st.write(
-    "This dashboard provides a comprehensive revenue forecast, "
-    "empowering strategic decision-making with data-driven insights. "
-    "Use the sidebar to interact with the forecast."
-)
-
-# Placeholder dataset (replace with your actual data loading)
+# Placeholder dataset
 @st.cache_data
 def load_data():
     dates = pd.date_range(start="2021-01-01", end="2024-12-31", freq="D")
@@ -172,11 +167,6 @@ st.plotly_chart(fig_forecast, use_container_width=True)
 # 3. The "Why": Model Components
 # ----------------------------------------
 st.header("🧠 Understanding the Forecast: Time Series Components")
-st.write(
-    "Prophet's model breaks down the forecast into its core components to reveal "
-    "the underlying patterns driving the predictions. This helps explain **why** "
-    "the forecast looks the way it does."
-)
 fig_components = plot_components_plotly(m, forecast)
 fig_components.update_layout(
     yaxis_title="Effect ($)",
@@ -187,10 +177,6 @@ st.plotly_chart(fig_components, use_container_width=True)
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
 st.header("📏 Model Performance and Accuracy")
-st.write(
-    "Model evaluation metrics provide confidence in the forecast. Here, we compare "
-    "the model's predictions against historical data to assess its accuracy."
-)
 
 df_eval = forecast.set_index('ds').join(df.set_index('ds'))
 df_eval = df_eval.dropna()
@@ -220,10 +206,6 @@ st.plotly_chart(fig_compare, use_container_width=True)
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
 st.header("📊 Deeper Dive: Historical Trends")
-st.write(
-    "Explore the raw historical data and its trends, which serve as the foundation "
-    "for the predictive model."
-)
 col1_hist, col2_hist = st.columns(2)
 with col1_hist:
     st.markdown("#### Month-over-Month Growth (%)")
@@ -246,7 +228,7 @@ with col2_hist:
     fig_ma = go.Figure()
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Daily Revenue', line=dict(color='#888888')))
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines',
-                                name='30-Day Moving Average', line=dict(color='#4CAF50', width=3)))
+                                name='30-Day Moving Average', line=dict(color='#3498db', width=3)))
     fig_ma.update_layout(
         xaxis_title="Date",
         yaxis_title="Revenue ($)"
