@@ -68,7 +68,7 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
-st.sidebar.header("⚙️ Configuration")
+
 
 # Add Company Logo
 try:
@@ -76,7 +76,7 @@ try:
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
-
+st.sidebar.header("⚙️ Configuration")
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -133,7 +133,6 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
-st.header("🔮 Forecasted Revenue Outlook")
 
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
