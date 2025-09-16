@@ -70,7 +70,6 @@ st.set_page_config(
 # ----------------------------------------
 st.sidebar.header("⚙️ Configuration")
 
-# Add Company Logo
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
@@ -85,9 +84,7 @@ confidence_interval = st.sidebar.slider(
     "Confidence Interval", 0.80, 0.99, 0.95
 )
 
-# ----------------------------------------
 # Add the "What If" Scenario Slider
-# ----------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.header("What If Scenario")
 revenue_change_pct = st.sidebar.slider(
@@ -133,8 +130,6 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
-st.header("🔮 Forecasted Revenue Outlook")
-
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -153,6 +148,7 @@ with col3:
     mom_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-2]) - 1 if len(df_yoy) >= 2 else 0
     st.metric("Month-over-Month Growth", f"{mom_growth:.2%}")
 
+
 # Main forecast chart with interactive capabilities
 st.subheader("📅 Daily Revenue Forecast with Confidence Interval")
 fig_forecast = plot_plotly(m, forecast)
@@ -162,7 +158,8 @@ fig_forecast.update_layout(
     yaxis_title="Revenue ($)"
 )
 st.plotly_chart(fig_forecast, use_container_width=True)
-
+st.markdown("---")
+st.markdown("---")
 # ----------------------------------------
 # 3. The "Why": Model Components
 # ----------------------------------------
@@ -172,7 +169,8 @@ fig_components.update_layout(
     yaxis_title="Effect ($)",
 )
 st.plotly_chart(fig_components, use_container_width=True)
-
+st.markdown("---")
+st.markdown("---")
 # ----------------------------------------
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
@@ -201,11 +199,28 @@ fig_compare.update_layout(
     yaxis_title="Revenue ($)"
 )
 st.plotly_chart(fig_compare, use_container_width=True)
-
+st.markdown("---")
+st.markdown("---")
 # ----------------------------------------
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
 st.header("📊 Deeper Dive: Historical Trends")
+
+# Calculate historical metrics
+df_yoy_hist = df.set_index('ds').resample('M')['y'].sum()
+hist_mom = (df_yoy_hist.iloc[-1] / df_yoy_hist.iloc[-2]) - 1 if len(df_yoy_hist) >= 2 else 0
+hist_yoy = (df_yoy_hist.iloc[-1] / df_yoy_hist.iloc[-13]) - 1 if len(df_yoy_hist) >= 13 else 0
+hist_cagr = ((df['y'].iloc[-1] / df['y'].iloc[0]) ** (1/(len(df)/365))) - 1 if len(df) > 1 else 0
+
+col1_hist, col2_hist, col3_hist = st.columns(3)
+with col1_hist:
+    st.metric("Historical CAGR", f"{hist_cagr:.2%}")
+with col2_hist:
+    st.metric("Historical YoY Growth", f"{hist_yoy:.2%}")
+with col3_hist:
+    st.metric("Historical M-o-M Growth", f"{hist_mom:.2%}")
+
+# Historical charts
 col1_hist, col2_hist = st.columns(2)
 with col1_hist:
     st.markdown("#### Month-over-Month Growth (%)")
@@ -229,8 +244,6 @@ with col2_hist:
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Daily Revenue', line=dict(color='#888888')))
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines',
                                 name='30-Day Moving Average', line=dict(color='#3498db', width=3)))
-    
-    # Moved the legend to the top-left to prevent cramping
     fig_ma.update_layout(
         xaxis_title="Date",
         yaxis_title="Revenue ($)",
@@ -249,6 +262,7 @@ st.subheader("📋 Raw Forecast Data")
 # Rename the columns for clarity
 forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
 forecast_display = forecast_display.rename(columns={
+    'ds': 'Date Timestamp'
     'yhat': 'Forecasted Revenue',
     'yhat_lower': 'Lower Bound',
     'yhat_upper': 'Upper Bound'
