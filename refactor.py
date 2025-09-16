@@ -68,12 +68,14 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
+st.sidebar.header("⚙️ Configuration")
+
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
-st.sidebar.header(" ⚙️  Configuration")
+
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -100,12 +102,28 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 st.title("🔮 Financial Forecasting Dashboard")
 st.subheader("Revenue Projections & Analytics")
 
-# Placeholder dataset
+# Updated placeholder dataset to generate better metrics
 @st.cache_data
 def load_data():
     dates = pd.date_range(start="2021-01-01", end="2024-12-31", freq="D")
-    revenue = np.random.randint(1000, 5000, len(dates)).astype(float)
-    df = pd.DataFrame({"ds": dates, "y": revenue})
+    df = pd.DataFrame({"ds": dates})
+    
+    # Create a base trend
+    df['y'] = np.linspace(1000, 5000, len(df))
+    
+    # Add yearly seasonality
+    df['y'] += 500 * np.sin(2 * np.pi * df['ds'].dt.dayofyear / 365.25)
+    
+    # Add random noise
+    df['y'] += np.random.normal(0, 200, len(df))
+    
+    # Add weekly seasonality
+    df['weekday'] = df['ds'].dt.dayofweek
+    df['y'] += df['weekday'].apply(lambda x: 200 if x < 5 else -300)
+    
+    # Ensure all values are positive
+    df['y'] = df['y'].abs()
+    
     return df
 
 df = load_data()
@@ -128,8 +146,11 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
+st.header("🔮 Forecasted Revenue Outlook")
+
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
+
 with col1:
     if len(forecast) > 1 and len(df) > 1:
         proj_cagr = ((forecast['yhat'].iloc[-1] / df['y'].iloc[0]) ** (1/(len(forecast)/365))) - 1
@@ -145,7 +166,6 @@ with col2:
 with col3:
     mom_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-2]) - 1 if len(df_yoy) >= 2 else 0
     st.metric("Month-over-Month Growth", f"{mom_growth:.2%}")
-
 
 # Main forecast chart with interactive capabilities
 st.markdown("---")
