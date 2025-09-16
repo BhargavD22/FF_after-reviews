@@ -108,19 +108,25 @@ def load_data():
     dates = pd.date_range(start="2021-01-01", end="2024-12-31", freq="D")
     df = pd.DataFrame({"ds": dates})
     
-    # Create a base trend
-    df['y'] = np.linspace(1000, 5000, len(df))
+    # Create a base trend with a slight upward curve
+    df['y'] = 1000 + 1.5 * np.arange(len(df)) + 0.005 * np.arange(len(df))**2
     
-    # Add yearly seasonality
-    df['y'] += 500 * np.sin(2 * np.pi * df['ds'].dt.dayofyear / 365.25)
+    # Add yearly seasonality (e.g., Q4 spike)
+    df['yearly_factor'] = np.sin(2 * np.pi * (df['ds'].dt.dayofyear - 1) / 365.25)
+    df['y'] += df['yearly_factor'] * (300 + 0.5 * np.arange(len(df)))
     
-    # Add random noise
-    df['y'] += np.random.normal(0, 200, len(df))
-    
-    # Add weekly seasonality
+    # Add weekly seasonality (e.g., weekends are slower)
     df['weekday'] = df['ds'].dt.dayofweek
-    df['y'] += df['weekday'].apply(lambda x: 200 if x < 5 else -300)
+    df['y'] += df['weekday'].apply(lambda x: 100 if x < 5 else -150)
     
+    # Add high-frequency noise for a more "stock market" feel
+    df['y'] += np.random.normal(0, 100, len(df))
+    
+    # Introduce random anomalies (spikes or drops)
+    anomaly_dates = df.sample(n=5, random_state=42)['ds'].values
+    for date in anomaly_dates:
+        df.loc[df['ds'] == date, 'y'] *= np.random.uniform(0.5, 1.5)
+        
     # Ensure all values are positive
     df['y'] = df['y'].abs()
     
