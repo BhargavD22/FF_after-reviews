@@ -68,14 +68,14 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
-st.sidebar.header("⚙️ Configuration")
+
 
 try:
     logo = Image.open('miracle-logo-dark.png')
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'miracle-logo-dark.png' is in the same directory.")
-
+st.sidebar.header("⚙️ Configuration")
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -96,11 +96,7 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 
 # ----------------------------------------
 # Main Content - Storytelling Scroll Layout
-# ----------------------------------------
-
-# 1. Header and Executive Summary
-st.title("🔮 Financial Forecasting Dashboard")
-st.subheader("Revenue Projections & Analytics")
+# --------------------------------------
 
 # Updated placeholder dataset to generate better metrics
 @st.cache_data
@@ -152,7 +148,9 @@ forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
 # ----------------------------------------
 # 2. The Main Event: The Forecast
 # ----------------------------------------
-st.header("🔮 Forecasted Revenue Outlook")
+st.sidebar.markdown("---")
+st.header(" Forecasted Revenue Outlook")
+st.sidebar.markdown("---")
 
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
