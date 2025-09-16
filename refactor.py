@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from PIL import Image
 
 # ----------------------------------------
-# Inject Custom CSS for a clean, modern look
+# Inject Custom CSS for a clean, modern look and vibrant KPIs
 # ----------------------------------------
 st.markdown(
     """
@@ -24,9 +24,23 @@ st.markdown(
         border-radius: 5px;
         border: none;
     }
+    .stMetric {
+        background-color: #ffffff; /* White background for metric boxes */
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-left: 5px solid #4CAF50; /* Green border on the left */
+        margin-bottom: 15px;
+    }
     .stMetric > div[data-testid="stMetricLabel"] {
         font-weight: bold;
-        color: #4CAF50;
+        color: #555555;
+        font-size: 1.1rem;
+    }
+    .stMetric > div[data-testid="stMetricValue"] {
+        font-size: 2.5rem;
+        color: #1a1a1a;
+        font-weight: bold;
     }
     h1, h2, h3, h4 {
         color: #1a1a1a;
@@ -54,15 +68,15 @@ st.set_page_config(
 # ----------------------------------------
 # Sidebar for user input & logo
 # ----------------------------------------
+st.sidebar.header("⚙️ Configuration")
 
 # Add Company Logo
 try:
-    logo = Image.open('miracle-logo-dark.png') 
-    st.sidebar.image(logo, use_column_width=True)
+    logo = Image.open('your_logo.png')  # Replace with your logo's filename
+    st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
 
-st.sidebar.header("⚙️ Configuration")
 forecast_periods = st.sidebar.slider(
     "Forecast Horizon (Months):", 12, 24, 36
 )
@@ -89,6 +103,14 @@ yearly_seasonality = st.sidebar.checkbox("Include Yearly Seasonality", True)
 
 # 1. Header and Executive Summary
 st.title("🔮 Financial Forecasting Dashboard")
+st.subheader("Revenue Projections & Analytics")
+
+st.write(
+    "This dashboard provides a comprehensive revenue forecast, "
+    "empowering strategic decision-making with data-driven insights. "
+    "Use the sidebar to interact with the forecast."
+)
+
 # Placeholder dataset (replace with your actual data loading)
 @st.cache_data
 def load_data():
@@ -113,7 +135,6 @@ forecast = m.predict(future)
 forecast['yhat'] = forecast['yhat'] * (1 + revenue_change_pct / 100)
 forecast['yhat_lower'] = forecast['yhat_lower'] * (1 + revenue_change_pct / 100)
 forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
-st.markdown(" #### ---")
 
 # ----------------------------------------
 # 2. The Main Event: The Forecast
@@ -123,7 +144,6 @@ st.header("🔮 Forecasted Revenue Outlook")
 # Display key forecasted metrics
 col1, col2, col3 = st.columns(3)
 with col1:
-    # Use CAGR for percentage display
     if len(forecast) > 1 and len(df) > 1:
         proj_cagr = ((forecast['yhat'].iloc[-1] / df['y'].iloc[0]) ** (1/(len(forecast)/365))) - 1
     else:
@@ -131,36 +151,48 @@ with col1:
     st.metric("Projected CAGR", f"{proj_cagr:.2%}")
 
 with col2:
-    # Calculate YOY growth for percentage display
     df_yoy = forecast.set_index('ds').resample('M')['yhat'].sum()
     yoy_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-13]) - 1 if len(df_yoy) >= 13 else 0
     st.metric("YoY Forecast Growth", f"{yoy_growth:.2%}")
 
 with col3:
-    # Calculate M-o-M growth for percentage display
     mom_growth = (df_yoy.iloc[-1] / df_yoy.iloc[-2]) - 1 if len(df_yoy) >= 2 else 0
     st.metric("Month-over-Month Growth", f"{mom_growth:.2%}")
-
 
 # Main forecast chart with interactive capabilities
 st.subheader("📅 Daily Revenue Forecast with Confidence Interval")
 fig_forecast = plot_plotly(m, forecast)
-fig_forecast.update_layout(height=500)
+fig_forecast.update_layout(
+    height=500,
+    xaxis_title="Date",
+    yaxis_title="Revenue ($)"
+)
 st.plotly_chart(fig_forecast, use_container_width=True)
-st.markdown("---")
 
 # ----------------------------------------
 # 3. The "Why": Model Components
 # ----------------------------------------
 st.header("🧠 Understanding the Forecast: Time Series Components")
-
+st.write(
+    "Prophet's model breaks down the forecast into its core components to reveal "
+    "the underlying patterns driving the predictions. This helps explain **why** "
+    "the forecast looks the way it does."
+)
 fig_components = plot_components_plotly(m, forecast)
+fig_components.update_layout(
+    yaxis_title="Effect ($)",
+)
 st.plotly_chart(fig_components, use_container_width=True)
-st.markdown("---")
+
 # ----------------------------------------
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
 st.header("📏 Model Performance and Accuracy")
+st.write(
+    "Model evaluation metrics provide confidence in the forecast. Here, we compare "
+    "the model's predictions against historical data to assess its accuracy."
+)
+
 df_eval = forecast.set_index('ds').join(df.set_index('ds'))
 df_eval = df_eval.dropna()
 
@@ -179,13 +211,20 @@ st.subheader("Historical vs. Forecasted Revenue")
 fig_compare = go.Figure()
 fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['y'], mode='lines', name='Historical'))
 fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['yhat'], mode='lines', name='Forecasted'))
+fig_compare.update_layout(
+    xaxis_title="Date",
+    yaxis_title="Revenue ($)"
+)
 st.plotly_chart(fig_compare, use_container_width=True)
-st.markdown("---")
+
 # ----------------------------------------
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
 st.header("📊 Deeper Dive: Historical Trends")
-
+st.write(
+    "Explore the raw historical data and its trends, which serve as the foundation "
+    "for the predictive model."
+)
 col1_hist, col2_hist = st.columns(2)
 with col1_hist:
     st.markdown("#### Month-over-Month Growth (%)")
@@ -198,7 +237,8 @@ with col1_hist:
         monthly_sum,
         x='month',
         y='pct_change',
-        markers=True
+        markers=True,
+        labels={"month": "Month", "pct_change": "Growth (%)"}
     )
     st.plotly_chart(fig_growth, use_container_width=True)
 with col2_hist:
@@ -208,13 +248,28 @@ with col2_hist:
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Daily Revenue', line=dict(color='#888888')))
     fig_ma.add_trace(go.Scatter(x=df['ds'], y=df['30d_ma'], mode='lines',
                                 name='30-Day Moving Average', line=dict(color='#4CAF50', width=3)))
+    fig_ma.update_layout(
+        xaxis_title="Date",
+        yaxis_title="Revenue ($)"
+    )
     st.plotly_chart(fig_ma, use_container_width=True)
 
 st.subheader("📋 Raw Forecast Data")
-st.dataframe(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(30))
+
+# Rename the columns for clarity
+forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
+forecast_display = forecast_display.rename(columns={
+    'yhat': 'Forecasted Revenue',
+    'yhat_lower': 'Lower Bound',
+    'yhat_upper': 'Upper Bound'
+})
+
+# Display the modified dataframe
+st.dataframe(forecast_display.tail(30))
+
 st.download_button(
     label="Download Forecast Data (CSV)",
-    data=forecast.to_csv(index=False),
+    data=forecast_display.to_csv(index=False),
     file_name="forecast.csv",
     mime="text/csv",
 )
