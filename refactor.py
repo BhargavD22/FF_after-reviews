@@ -262,7 +262,6 @@ st.subheader("📋 Raw Forecast Data")
 # Rename the columns for clarity
 forecast_display = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
 forecast_display = forecast_display.rename(columns={
-    'ds': 'Date Timestamp'
     'yhat': 'Forecasted Revenue',
     'yhat_lower': 'Lower Bound',
     'yhat_upper': 'Upper Bound'
