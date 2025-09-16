@@ -23,8 +23,8 @@ st.title("📊 Financial Forecasting (Revenue) - Dashboard Analytics")
 # ----------------------------------------
 st.sidebar.header("⚙️ Configuration")
 
-forecast_periods = st.sidebar.selectbox(
-    "Forecast Horizon (Months):", [12, 24, 36], index=0
+forecast_periods = st.sidebar.slider(
+    "Forecast Horizon (Months):", 12, 24, 36
 )
 
 confidence_interval = st.sidebar.slider(
