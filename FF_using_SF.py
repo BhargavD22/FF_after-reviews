@@ -191,13 +191,17 @@ try:
         schema=st.secrets["snowflake"]["schema"]
     )
 
-    query = "SELECT DS as ds, Y as y FROM financial_forecast ORDER BY DS"
+    query = "SELECT DS, Y FROM financial_forecast ORDER BY DS"
     df = pd.read_sql(query, conn)
     conn.close()
-
+    
+    # Force rename columns
+    df.columns = df.columns.str.lower()   # turns DS → ds, Y → y
+    
     # Ensure correct dtypes
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
+
 
 except Exception as e:
     st.error(f"❌ Error fetching data from Snowflake: {e}")
