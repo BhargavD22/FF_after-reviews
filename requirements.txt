@@ -4,3 +4,5 @@ plotly
 google-cloud-bigquery
 pandas
 db-dtypes
+snowflake-connector-python
+
