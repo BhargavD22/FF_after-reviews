@@ -13,7 +13,7 @@ import snowflake.connector
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
 CHAT_ICON_PATH = "miralogo.png"
-CSV_FILE_PATH = "financial_forecast_modified.csv"
+#CSV_FILE_PATH = "financial_forecast_modified.csv"
 
 # Set Streamlit page config for wide layout + favicon
 st.set_page_config(
