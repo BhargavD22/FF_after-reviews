@@ -68,7 +68,7 @@ forecast_periods = st.sidebar.slider(
 )
 
 confidence_interval = st.sidebar.slider(
-    "Confidence Interval", 80, 99, 95
+    "Confidence Interval", 0.80, 0.99, 0.95
 )
 
 # ----------------------------------------
