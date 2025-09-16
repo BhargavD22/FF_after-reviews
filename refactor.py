@@ -113,6 +113,7 @@ forecast = m.predict(future)
 forecast['yhat'] = forecast['yhat'] * (1 + revenue_change_pct / 100)
 forecast['yhat_lower'] = forecast['yhat_lower'] * (1 + revenue_change_pct / 100)
 forecast['yhat_upper'] = forecast['yhat_upper'] * (1 + revenue_change_pct / 100)
+st.markdown(" #### ---")
 
 # ----------------------------------------
 # 2. The Main Event: The Forecast
@@ -146,6 +147,7 @@ st.subheader("📅 Daily Revenue Forecast with Confidence Interval")
 fig_forecast = plot_plotly(m, forecast)
 fig_forecast.update_layout(height=500)
 st.plotly_chart(fig_forecast, use_container_width=True)
+st.markdown("---")
 
 # ----------------------------------------
 # 3. The "Why": Model Components
@@ -154,7 +156,7 @@ st.header("🧠 Understanding the Forecast: Time Series Components")
 
 fig_components = plot_components_plotly(m, forecast)
 st.plotly_chart(fig_components, use_container_width=True)
-
+st.markdown("---")
 # ----------------------------------------
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
@@ -178,7 +180,7 @@ fig_compare = go.Figure()
 fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['y'], mode='lines', name='Historical'))
 fig_compare.add_trace(go.Scatter(x=df_eval.index, y=df_eval['yhat'], mode='lines', name='Forecasted'))
 st.plotly_chart(fig_compare, use_container_width=True)
-
+st.markdown("---")
 # ----------------------------------------
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
