@@ -172,8 +172,7 @@ fig_components.update_layout(
     yaxis_title="Effect ($)",
 )
 st.plotly_chart(fig_components, use_container_width=True)
-st.markdown("---")
-st.markdown("---")
+
 # ----------------------------------------
 # 4. The "How Well": Model Evaluation
 # ----------------------------------------
@@ -204,8 +203,7 @@ fig_compare.update_layout(
     yaxis_title="Revenue ($)"
 )
 st.plotly_chart(fig_compare, use_container_width=True)
-st.markdown("---")
-st.markdown("---")
+
 # ----------------------------------------
 # 5. The "What's Next": Deeper Insights
 # ----------------------------------------
