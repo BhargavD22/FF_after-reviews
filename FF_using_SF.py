@@ -191,7 +191,7 @@ try:
         schema=st.secrets["snowflake"]["schema"]
     )
 
-    query = "SELECT DS, Y FROM financial_forecast ORDER BY DS"
+    query = "SELECT DS as ds, Y as y FROM financial_forecast ORDER BY DS"
     df = pd.read_sql(query, conn)
     conn.close()
 
