@@ -8,6 +8,7 @@ import base64
 import os
 import streamlit.components.v1 as components
 from datetime import datetime
+import snowflake.connector
 
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
@@ -180,16 +181,26 @@ with st.sidebar:
 
 # --- Data & validation ---
 
-if not os.path.exists(CSV_FILE_PATH):
-    st.error(f"The required data file '{CSV_FILE_PATH}' was not found in the repository. Please ensure it is present.")
-    st.stop()
-
 try:
-    df = pd.read_csv(CSV_FILE_PATH)
+    conn = snowflake.connector.connect(
+        user=st.secrets["snowflake"]["user"],
+        password=st.secrets["snowflake"]["password"],
+        account=st.secrets["snowflake"]["account"],
+        warehouse=st.secrets["snowflake"]["warehouse"],
+        database=st.secrets["snowflake"]["database"],
+        schema=st.secrets["snowflake"]["schema"]
+    )
+
+    query = "SELECT ds, y FROM financial_forecast ORDER BY ds"
+    df = pd.read_sql(query, conn)
+    conn.close()
+
+    # Ensure correct dtypes
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
+
 except Exception as e:
-    st.error(f"Error reading the file from the repository. Please ensure it's a valid CSV with 'ds' and 'y' columns. Error: {e}")
+    st.error(f"❌ Error fetching data from Snowflake: {e}")
     st.stop()
 
 # --- Fit Prophet model with spinner (loading indicator) ---
