@@ -72,7 +72,7 @@ st.sidebar.header("⚙️ Configuration")
 
 # Add Company Logo
 try:
-    logo = Image.open('your_logo.png')  # Replace with your logo's filename
+    logo = Image.open('miracle-logo-dark.png')  # Replace with your logo's filename
     st.sidebar.image(logo, use_container_width=True)
 except FileNotFoundError:
     st.sidebar.error("Logo file not found. Please ensure 'your_logo.png' is in the same directory.")
