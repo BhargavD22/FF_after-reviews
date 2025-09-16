@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 # Page Config
 # ----------------------------------------
 st.set_page_config(
-    page_title="Retail & E-Commerce Financial Forecasting",
+    page_title="Financial Forecasting (Revenue) - Dashboard Analytics",
     page_icon="📊",
     layout="wide"
 )
