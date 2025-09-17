@@ -247,6 +247,7 @@ combined_df = pd.concat([
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations", "💡 Deep Dive Analysis"])
 
 # ---------------------- TAB 1: Forecast ----------------------
+with tab1:
     # ---- KPIs (Core Business Metrics) ----
     st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
     st.markdown("### 🔑 Core Business Metrics")
