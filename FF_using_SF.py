@@ -278,7 +278,7 @@ with tab1:
     # ---- KPIs (Core Business Metrics) ----
     st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
     st.markdown("### 🔑 Core Business Metrics")
-     st.markdown("---")
+    st.markdown("---")
     
     # --------------------------
     # 1️⃣ KPI Calculations
