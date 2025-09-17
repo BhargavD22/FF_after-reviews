@@ -476,6 +476,7 @@ with tab1:
                 f"""
                 <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Latest Historical MoM Growth</p>
+                    <p class="kpi-subtitle">Change from the last actual month vs. its previous month</p>
                     <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
                 </div>
                 """, unsafe_allow_html=True
@@ -485,6 +486,7 @@ with tab1:
                 f"""
                 <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Latest Forecasted MoM Growth</p>
+                    <p class="kpi-subtitle">Expected change from last actual month into forecast</p>
                     <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
                 </div>
                 """, unsafe_allow_html=True
@@ -496,6 +498,7 @@ with tab1:
                 f"""
                 <div class="kpi-container kpi-container-historical">
                     <p class="kpi-title">Latest Historical YoY Growth</p>
+                    <p class="kpi-subtitle">Change vs. the same month in the previous year</p>
                     <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
                 </div>
                 """, unsafe_allow_html=True
@@ -505,6 +508,7 @@ with tab1:
                 f"""
                 <div class="kpi-container kpi-container-forecasted">
                     <p class="kpi-title">Latest Forecasted YoY Growth</p>
+                    <p class="kpi-subtitle">Expected change vs. the same month last year (forecasted)</p>
                     <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
                 </div>
                 """, unsafe_allow_html=True
