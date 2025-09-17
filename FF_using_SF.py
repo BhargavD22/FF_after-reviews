@@ -137,7 +137,7 @@ st.markdown(
 )
 
 # --- App header + guide ---
-st.title("📈 Financial Forecasting- Revenue ")
+st.title("📈 Financial Forecasting - Revenue ")
 
 # --- Sidebar controls (sticky) ---
 with st.sidebar:
@@ -248,9 +248,37 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "�
 
 # ---------------------- TAB 1: Forecast ----------------------
 with tab1:
+        # ---- Historical Revenue & 30-Day Moving Average (unchanged but restyled) ----
+    st.markdown('<div id="historical-trends"></div>', unsafe_allow_html=True)
+    st.subheader("Historical Revenue & 30-Day Moving Average")
+    df['30_day_avg'] = df['y'].rolling(window=30, min_periods=1).mean()
+
+    fig_hist = go.Figure()
+    fig_hist.add_trace(go.Scatter(
+        x=df['ds'], y=df['y'],
+        mode='lines',
+        name='Historical Daily Revenue',
+        line=dict(color='rgba(11,110,246,0.35)', width=1),
+        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+    ))
+    fig_hist.add_trace(go.Scatter(
+        x=df['ds'], y=df['30_day_avg'],
+        mode='lines',
+        name='30-Day Moving Avg',
+        line=dict(color='#1f9d55', width=3),
+        hovertemplate='<b>Date:</b> %{x|%Y-%m-%m}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+    ))
+    fig_hist.update_layout(title="Historical Revenue and Moving Average",
+                           xaxis_title="Date", yaxis_title="Revenue (in thousands of $)",
+                           yaxis=dict(tickprefix="$"), template="plotly_white", hovermode="x unified",
+                           xaxis_rangeslider_visible=True, transition_duration=500)
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+    st.markdown("---")
     # ---- KPIs (Core Business Metrics) ----
     st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
     st.markdown("### 🔑 Core Business Metrics")
+     st.markdown("---")
     
     # --------------------------
     # 1️⃣ KPI Calculations
@@ -513,33 +541,7 @@ with tab1:
 
     st.markdown("---")
 
-    # ---- Historical Revenue & 30-Day Moving Average (unchanged but restyled) ----
-    st.markdown('<div id="historical-trends"></div>', unsafe_allow_html=True)
-    st.subheader("Historical Revenue & 30-Day Moving Average")
-    df['30_day_avg'] = df['y'].rolling(window=30, min_periods=1).mean()
 
-    fig_hist = go.Figure()
-    fig_hist.add_trace(go.Scatter(
-        x=df['ds'], y=df['y'],
-        mode='lines',
-        name='Historical Daily Revenue',
-        line=dict(color='rgba(11,110,246,0.35)', width=1),
-        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
-    ))
-    fig_hist.add_trace(go.Scatter(
-        x=df['ds'], y=df['30_day_avg'],
-        mode='lines',
-        name='30-Day Moving Avg',
-        line=dict(color='#1f9d55', width=3),
-        hovertemplate='<b>Date:</b> %{x|%Y-%m-%m}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
-    ))
-    fig_hist.update_layout(title="Historical Revenue and Moving Average",
-                           xaxis_title="Date", yaxis_title="Revenue (in thousands of $)",
-                           yaxis=dict(tickprefix="$"), template="plotly_white", hovermode="x unified",
-                           xaxis_rangeslider_visible=True, transition_duration=500)
-    st.plotly_chart(fig_hist, use_container_width=True)
-
-    st.markdown("---")
 
     # ---- Daily Revenue Chart (Combined historical + forecast) ----
     st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
