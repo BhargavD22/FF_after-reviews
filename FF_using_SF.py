@@ -455,8 +455,20 @@ with tab1:
         # Show latest MoM & YoY as KPI cards
         latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
         latest_yoy_hist = (historical_growth_df.groupby(historical_growth_df['ds'].dt.to_period('Y'))['y'].sum().pct_change().dropna().iloc[-1]*100) if len(historical_growth_df)>365 else 0
-        latest_mom_forecast = monthly_revenue_forecast['MoM_Growth'].iloc[-1] if not monthly_revenue_forecast['MoM_Growth'].empty else 0
-        latest_yoy_forecast = (monthly_revenue_forecast.groupby(monthly_revenue_forecast['month'].dt.to_period('Y'))['y'].sum().pct_change().dropna().iloc[-1]*100) if len(monthly_revenue_forecast)>0 else 0
+
+# Forecasted MoM: compare first forecasted month with last actual month
+        if not monthly_revenue_forecast.empty:
+                last_hist_month = monthly_revenue_hist['y'].iloc[-1]
+                first_forecast_month = monthly_revenue_forecast['y'].iloc[0]
+                latest_mom_forecast = ((first_forecast_month - last_hist_month) / last_hist_month * 100) if last_hist_month != 0 else 0
+        else:
+                latest_mom_forecast = 0
+
+# Forecasted YoY: same as before
+        latest_yoy_forecast = (
+         monthly_revenue_forecast.groupby(monthly_revenue_forecast['month'].dt.to_period('Y'))['y']
+         .sum().pct_change().dropna().iloc[-1]*100
+        ) if len(monthly_revenue_forecast) > 0 else 0
 
         col7, col8 = st.columns(2)
         with col7:
