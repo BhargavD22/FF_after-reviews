@@ -247,41 +247,15 @@ combined_df = pd.concat([
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations", "💡 Deep Dive Analysis"])
 
 # ---------------------- TAB 1: Forecast ----------------------
-with tab1:
     # ---- KPIs (Core Business Metrics) ----
     st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
     st.markdown("### 🔑 Core Business Metrics")
-    total_historical_revenue = df['y'].sum()
-    avg_historical_revenue = df['y'].mean()
-    forecast_df = forecast[forecast['ds'] > df['ds'].max()]
-    total_forecasted_revenue = forecast_df[forecast_col].sum() if not forecast_df.empty else 0.0
-    avg_forecasted_revenue = forecast_df[forecast_col].mean() if not forecast_df.empty else 0.0
-
-    # deltas
-    total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue * 100) if total_historical_revenue != 0 else 0.0
-    avg_revenue_delta = ((avg_forecasted_revenue - avg_historical_revenue) / avg_historical_revenue * 100) if avg_historical_revenue != 0 else 0.0
-
-    # CAGR calculations (safely)
-    first_date_hist = df['ds'].min()
-    last_date_hist = df['ds'].max()
-    first_revenue_hist = df.loc[df['ds'] == first_date_hist, 'y'].iloc[0]
-    last_revenue_hist = df.loc[df['ds'] == last_date_hist, 'y'].iloc[0]
-    num_years_hist = (last_date_hist - first_date_hist).days / 365.25
-    cagr_hist = safe_cagr(first_revenue_hist, last_revenue_hist, num_years_hist)
-
-    first_date_forecast = df['ds'].max()
-    if not forecast_df.empty:
-        last_date_forecast = forecast_df['ds'].max()
-        first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
-        last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, forecast_col].iloc[0]
-        num_years_forecast = (last_date_forecast - first_date_forecast).days / 365.25
-        cagr_forecast = safe_cagr(first_revenue_forecast, last_revenue_forecast, num_years_forecast)
-    else:
-        cagr_forecast = 0.0
-
-    col_kpi1, col_kpi2 = st.columns(2)
-    with col_kpi1:
-        st.markdown("#### Historical Metrics")
+    
+    # Historical Metrics Row
+    st.markdown("#### Historical Metrics")
+    h1, h2, h3 = st.columns(3)
+    
+    with h1:
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-historical">
@@ -292,6 +266,8 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
+    
+    with h2:
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-historical">
@@ -302,6 +278,8 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
+    
+    with h3:
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-historical">
@@ -312,9 +290,12 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
-
-    with col_kpi2:
-        st.markdown("#### Forecasted Metrics")
+    
+    # Forecasted Metrics Row
+    st.markdown("#### Forecasted Metrics")
+    f1, f2, f3 = st.columns(3)
+    
+    with f1:
         delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
         delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
         st.markdown(
@@ -331,7 +312,8 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
-
+    
+    with f2:
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-forecasted">
@@ -346,7 +328,8 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
-
+    
+    with f3:
         st.markdown(
             f"""
             <div class="kpi-container kpi-container-forecasted">
@@ -361,8 +344,9 @@ with tab1:
             """,
             unsafe_allow_html=True
         )
-
+    
     st.markdown("---")
+
 
     # ---- Growth Metrics (MoM & YoY) with monthly chart and arrow markers ----
     with st.expander("📈 Growth Metrics", expanded=True):
