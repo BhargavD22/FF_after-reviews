@@ -137,7 +137,7 @@ st.markdown(
 )
 
 # --- App header + guide ---
-st.title("📈 Financial Forecasting- Revenue Dashboard")
+st.title("📈 Financial Forecasting- Revenue ")
 
 # --- Sidebar controls (sticky) ---
 with st.sidebar:
