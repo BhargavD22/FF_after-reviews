@@ -444,11 +444,35 @@ with tab1:
         monthly_revenue_hist['direction'] = monthly_revenue_hist['MoM_Growth'].apply(lambda x: 'up' if x>0 else ('down' if x<0 else 'flat'))
 
         # Forecast monthly aggregates
-        forecast_df['month'] = forecast_df['ds'].dt.to_period('M').dt.to_timestamp()
-        if what_if_enabled:
-            monthly_revenue_forecast = forecast_df.groupby('month')['yhat_what_if'].sum().reset_index().rename(columns={'yhat_what_if':'y'})
-        else:
-            monthly_revenue_forecast = forecast_df.groupby('month')['yhat'].sum().reset_index().rename(columns={'yhat':'y'})
+        # Forecast monthly aggregates
+forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
+
+if what_if_enabled:
+    monthly_revenue_forecast = (
+        forecast_df.groupby('month')['yhat_what_if']
+        .sum().reset_index()
+        .rename(columns={'yhat_what_if': 'y'})
+    )
+else:
+    monthly_revenue_forecast = (
+        forecast_df.groupby('month')['yhat']
+        .sum().reset_index()
+        .rename(columns={'yhat': 'y'})
+    )
+
+# Drop last incomplete forecast month to avoid artificial dip
+last_forecast_month = forecast_df['ds'].max().to_period('M')
+if monthly_revenue_forecast['month'].iloc[-1] == last_forecast_month:
+    monthly_revenue_forecast = monthly_revenue_forecast.iloc[:-1]
+
+# Convert back to timestamp
+monthly_revenue_forecast['month'] = monthly_revenue_forecast['month'].dt.to_timestamp()
+
+# Add MoM growth + direction
+monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['y'].pct_change() * 100
+monthly_revenue_forecast['direction'] = monthly_revenue_forecast['MoM_Growth'].apply(
+    lambda x: 'up' if x > 0 else ('down' if x < 0 else 'flat')
+)
         monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['y'].pct_change()*100
         monthly_revenue_forecast['direction'] = monthly_revenue_forecast['MoM_Growth'].apply(lambda x: 'up' if x>0 else ('down' if x<0 else 'flat'))
 
