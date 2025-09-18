@@ -143,7 +143,7 @@ st.title("📈 Financial Forecasting - Revenue ")
 with st.sidebar:
     # logo
     if encoded_logo:
-        st.image(LOGO_PATH, use_column_width=True)
+        st.image(LOGO_PATH, use_container_width=True)
     else:
         st.error(f"Logo file not found at {LOGO_PATH}")
 
