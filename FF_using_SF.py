@@ -1148,3 +1148,184 @@ with tab4:
     
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
+
+# --- Floating Chat (DROP-IN) ---
+# Keep this near the bottom of your file, AFTER your existing app logic.
+# Uses your API and shows only the summarized text + tables.
+
+# --- Floating Chat (GLOBAL OVERLAY via Shadow DOM) ---
+# Works above the whole Streamlit page; includes robust API error messages.
+
+import base64, os
+import streamlit as st
+
+CHAT_ICON_PATH = "miralogo.png"
+
+try:
+    with open(CHAT_ICON_PATH, "rb") as _img:
+        _CHAT_ICON_B64 = base64.b64encode(_img.read()).decode()
+except Exception:
+    _CHAT_ICON_B64 = ""  # falls back to emoji
+
+overlay_html = """
+<script>
+(function () {
+  // Create a Shadow DOM overlay in the PARENT page (so it’s never clipped/hidden)
+  var canParent = false;
+  try { canParent = !!window.parent && !!window.parent.document && !!window.parent.document.body; } catch (e) { canParent = false; }
+  var hostDoc = canParent ? window.parent.document : document;
+
+  var ROOT_ID = "mira-overlay-root";
+  var hostDiv = hostDoc.getElementById(ROOT_ID);
+  if (!hostDiv) {
+    hostDiv = hostDoc.createElement("div");
+    hostDiv.id = ROOT_ID;
+    hostDoc.body.appendChild(hostDiv);
+  }
+
+  var shadow = hostDiv.shadowRoot || hostDiv.attachShadow({ mode: "open" });
+
+  var ICON_B64 = "__ICON_B64__";
+  var hasIcon = !!ICON_B64;
+
+  var css = ''
+  + '.mira-chat-toggle{position:fixed;bottom:18px;right:18px;width:56px;height:56px;border-radius:50%;'
+  + 'background:#fff;border:2px solid #007bff;box-shadow:0 8px 24px rgba(0,0,0,.18);display:grid;place-items:center;cursor:pointer;'
+  + 'z-index:9999999999;background-repeat:no-repeat;background-position:center;background-size:30px 30px;animation:mira-pulse 2s infinite;}'
+  + (hasIcon ? ('.mira-chat-toggle{background-image:url(data:image/png;base64,' + ICON_B64 + ');} .mira-chat-toggle span{display:none;}')
+             : ('.mira-chat-toggle span{font-size:22px;display:block;}'))
+  + '@keyframes mira-pulse{0%{box-shadow:0 0 0 0 rgba(0,123,255,.45);}70%{box-shadow:0 0 0 16px rgba(0,123,255,0);}100%{box-shadow:0 0 0 0 rgba(0,123,255,0);}}'
+  + '.mira-chat-modal{position:fixed;bottom:84px;right:18px;width:360px;max-width:96vw;height:480px;max-height:70vh;background:#fff;color:#111827;'
+  + 'border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 24px 48px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;z-index:9999999999;}'
+  + '@media (max-width:480px){.mira-chat-modal{left:12px;right:12px;width:auto;height:70vh;}}'
+  + '.mira-chat-header{background:#007bff;color:#fff;padding:10px 14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;}'
+  + '.mira-chat-header button{background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;}'
+  + '.mira-chat-body{flex:1;background:#fafbfc;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}'
+  + '.mira-msg{max-width:85%;padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;line-height:1.35;font-size:14px;white-space:pre-wrap;word-break:break-word;}'
+  + '.mira-user{align-self:flex-end;background:#e9f3ff;border-color:#cfe5ff;} .mira-bot{align-self:flex-start;background:#f5f7fb;}'
+  + '.mira-typing{align-self:flex-start;display:inline-flex;gap:6px;padding:8px 10px;border-radius:12px;border:1px solid #e5e7eb;background:#f5f7fb;color:#6b7280;font-size:14px;}'
+  + '.mira-typing .dot{width:6px;height:6px;border-radius:50%;background:#6b7280;opacity:.6;animation:mira-blink 1.2s infinite;}'
+  + '.mira-typing .dot:nth-child(2){animation-delay:.2s;} .mira-typing .dot:nth-child(3){animation-delay:.4s;}'
+  + '@keyframes mira-blink{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}'
+  + '.mira-chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid #e5e7eb;background:#fff;}'
+  + '.mira-chat-input input{flex:1;font-size:14px;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;outline:none;}'
+  + '.mira-chat-input button{background:#007bff;color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;}'
+  + '.mira-chat-input button:disabled{opacity:.65;cursor:not-allowed;}'
+  + '.mira-table-wrap{overflow-x:auto;} .mira-table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px;}'
+  + '.mira-table th,.mira-table td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;} .mira-table th{background:#f3f4f6;}';
+
+  shadow.innerHTML = ''
+    + '<style>' + css + '</style>'
+    + '<button class="mira-chat-toggle" id="miraToggle" aria-label="Open chat"><span>💬</span></button>'
+    + '<div class="mira-chat-modal" id="miraModal" role="dialog" aria-modal="true" aria-label="Mira Chat">'
+    + '  <div class="mira-chat-header"><span>💬 Chat Assistant</span><button id="miraClose" aria-label="Close chat">✖</button></div>'
+    + '  <div class="mira-chat-body" id="miraBody"></div>'
+    + '  <div class="mira-chat-input"><input id="miraInput" type="text" placeholder="Ask your question..." /><button id="miraSend">Send</button></div>'
+    + '</div>';
+
+  // 👇 CHANGE #1: point to your Cloud Run proxy URL (no access key here)
+  var API_URL = "https://mira-proxy-582396939090.us-central1.run.app";
+
+  var modal  = shadow.getElementById("miraModal");
+  var toggle = shadow.getElementById("miraToggle");
+  var closeB = shadow.getElementById("miraClose");
+  var body   = shadow.getElementById("miraBody");
+  var input  = shadow.getElementById("miraInput");
+  var send   = shadow.getElementById("miraSend");
+
+  function openChat(){ modal.style.display="flex"; setTimeout(function(){ input.focus(); }, 50); }
+  function closeChat(){ modal.style.display="none"; }
+  function scrollToBottom(){ body.scrollTop = body.scrollHeight; }
+
+  function bubble(role, html){
+    var div = document.createElement("div");
+    div.className = "mira-msg " + (role === "user" ? "mira-user" : "mira-bot");
+    if (typeof html === "string") div.innerText = html; else div.appendChild(html);
+    body.appendChild(div); scrollToBottom();
+  }
+
+  function tableFromRows(rows){
+    var table = document.createElement("table"); table.className="mira-table";
+    var head = document.createElement("thead"); var htr = document.createElement("tr");
+    var keys = Object.keys(rows[0] || {});
+    keys.forEach(function(k){ var th=document.createElement("th"); th.textContent=k; htr.appendChild(th); });
+    head.appendChild(htr); table.appendChild(head);
+    var tb = document.createElement("tbody");
+    rows.slice(0,10).forEach(function(r){
+      var tr=document.createElement("tr");
+      keys.forEach(function(k){
+        var td=document.createElement("td"); var v=r[k];
+        td.textContent = (typeof v === "number") ? v.toLocaleString() : (v == null ? "" : String(v));
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    var wrap=document.createElement("div"); wrap.className="mira-table-wrap"; wrap.appendChild(table); return wrap;
+  }
+
+  var busy=false, typingEl=null;
+  function setBusy(state){
+    busy=state; send.disabled=state; input.disabled=state;
+    if(state){
+      typingEl=document.createElement("div");
+      typingEl.className="mira-typing";
+      typingEl.innerHTML='<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      body.appendChild(typingEl);
+    } else if (typingEl){ typingEl.remove(); typingEl=null; }
+    scrollToBottom();
+  }
+
+  async function sendMessage(){
+    if (busy) return;
+    var q = (input.value || "").trim(); if (!q) return;
+    bubble("user", q); input.value=""; setBusy(true);
+
+    try{
+      // 👇 CHANGE #2: only Content-Type header; the proxy adds access-key
+      var res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: q }),
+        mode: "cors"
+      });
+
+      if (!res.ok){
+        var txt = "";
+        try{ txt = await res.text(); }catch(_){}
+        bubble("bot", "API error " + res.status + (txt ? (": " + txt.slice(0,160)) : ""));
+        return;
+      }
+
+      var data = {};
+      try{ data = await res.json(); }catch(_){ data = {}; }
+
+      var resp    = (data && data.response) ? data.response : {};
+      var summary = resp.summerized || resp.summarized || "";
+      var rows    = Array.isArray(resp.data) ? resp.data : [];
+
+      if (summary) bubble("bot", summary);
+      if (rows && rows.length) bubble("bot", tableFromRows(rows));
+      if (!summary && (!rows || !rows.length)) bubble("bot", "No summary or data returned.");
+    } catch (e){
+      bubble("bot", "Request failed: " + (e && e.message ? e.message : ""));
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  toggle.addEventListener("click", function(){ (modal.style.display === "flex") ? closeChat() : openChat(); });
+  closeB.addEventListener("click", closeChat);
+  send.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+})();
+</script>
+"""
+
+
+# inject the icon data without needing f-string brace escaping
+overlay_html = overlay_html.replace("__ICON_B64__", _CHAT_ICON_B64)
+
+# Render with zero height; overlay is attached to parent DOM and floats globally
+st.components.v1.html(overlay_html, height=0, scrolling=False)
