@@ -886,7 +886,7 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-        st.markdown("### Recommendations")
+    st.markdown("### Recommendations")
 
     # --- Safe Computation of Inputs ---
     try:
