@@ -886,49 +886,81 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-    st.markdown("### Recommendations")
+        st.markdown("### Recommendations")
 
-    # --- Dynamic Recommendation ---
-    def generate_recommendation(cagr, mom_growth, volatility, anomalies):
-        if cagr > 10:
+    # --- Safe Computation of Inputs ---
+    try:
+        forecast_cagr_pct = float(fore_cagr) * 100.0
+    except Exception:
+        forecast_cagr_pct = 0.0
+
+    # Compute MoM Growth safely
+    mom_growth = 0.0
+    try:
+        tmp = forecast[forecast['ds'] > df['ds'].max()].copy()
+        tmp['month'] = tmp['ds'].dt.to_period('M').dt.to_timestamp()
+        if 'yhat' in tmp.columns:
+            monthly_agg = tmp.groupby('month')['yhat'].sum().reset_index()
+            monthly_agg['MoM_Growth'] = monthly_agg['yhat'].pct_change() * 100.0
+            if not monthly_agg['MoM_Growth'].dropna().empty:
+                mom_growth = float(monthly_agg['MoM_Growth'].dropna().iloc[-1])
+    except Exception:
+        mom_growth = 0.0
+
+    try:
+        volatility = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
+    except Exception:
+        volatility = 0.0
+
+    anomaly_detected_flag = False
+    try:
+        historical_comparison = pd.merge(df, forecast, on='ds', how='inner')
+        if 'yhat' in historical_comparison.columns:
+            historical_comparison['residuals'] = historical_comparison['y'] - historical_comparison['yhat']
+            std_res = historical_comparison['residuals'].std()
+            if std_res != 0:
+                historical_comparison['z_score'] = historical_comparison['residuals'] / std_res
+                anomalies_df = historical_comparison[historical_comparison['z_score'].abs() > 3]
+                anomaly_detected_flag = not anomalies_df.empty
+    except Exception:
+        anomaly_detected_flag = False
+
+    # --- Recommendation Generator ---
+    def generate_recommendation(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
+        if cagr_pct > 10:
             trend = "strong growth"
             action = "increase inventory and scale marketing campaigns"
-        elif cagr > 0:
+        elif cagr_pct > 0:
             trend = "moderate growth"
             action = "maintain steady operations with cautious optimizations"
         else:
             trend = "a decline"
             action = "focus on cost optimization and strengthen customer retention"
 
-        if volatility > 0.2 * abs(cagr):
-            risk = "However, forecasts show high volatility, so plan for uncertainty and buffer inventory."
+        if volatility_val > 0.2 * abs(cagr_pct):
+            risk = "However, forecasts show high volatility; plan for uncertainty and buffer inventory."
         else:
             risk = "The forecast appears relatively stable with low uncertainty."
 
-        anomaly_text = "Recent anomalies suggest potential supply chain or demand shocks to investigate." if anomalies else ""
+        anomaly_text = " Recent anomalies were detected — investigate supply chain, promotions, or data quality." if anomalies_bool else ""
 
         return (
-            f"Revenue is projected to show {trend} with a CAGR of {cagr:.2f}%. "
-            f"Recommended action: {action}. {risk} {anomaly_text}"
+            f"Revenue is projected to show {trend} with a CAGR of {cagr_pct:.2f}%. "
+            f"Recommended action: {action}. {risk}{anomaly_text}"
         )
 
-    # Example inputs — re-use KPIs you already computed
-    forecast_cagr = fore_cagr * 100   # convert ratio → %
-    mom_growth = monthly_growth_rate
-    volatility = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
-    anomalies = anomaly_detected_flag if 'anomaly_detected_flag' in locals() else False
+    # --- Generate & Display ---
+    recommendation_text = generate_recommendation(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
 
-    recommendation = generate_recommendation(forecast_cagr, mom_growth, volatility, anomalies)
-    st.markdown(f"**Automated Recommendation:** {recommendation}")
+    if forecast_cagr_pct > 10:
+        st.success("Recommendation Category: Expand")
+    elif forecast_cagr_pct < -5:
+        st.error("Recommendation Category: Optimize")
+    else:
+        st.info("Recommendation Category: Maintain")
 
-    st.markdown("### Actionable next steps")
-    st.markdown(
-        """
-        - Align budgets and headcount planning with forecast peaks.
-        - Investigate anomalies flagged in historical data (e.g., product launches, supply dips).
-        - Re-run forecasts monthly and after major events (promotions, product launches).
-        """
-    )
+    st.markdown(f"**Automated Recommendation:** {recommendation_text}")
+
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
 with tab4:
