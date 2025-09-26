@@ -887,14 +887,40 @@ with tab3:
     )
 
     st.markdown("### Recommendations")
-    if change_pct > 5:
-        st.success("Forecast indicates meaningful positive growth — consider increasing investment in growth initiatives, hiring for capacity, and preparing inventory/operations for higher demand.")
-    elif change_pct < -5:
-        st.error("Forecast suggests a contraction. Investigate drivers (seasonality, recent dips) and consider cost optimization, marketing to stabilize revenue, or hedging cashflow exposure.")
-    else:
-        st.info("Forecast is relatively stable. Maintain current strategy but monitor leading indicators and re-run forecasts frequently if new data arrives.")
 
-    st.markdown("---")
+    # --- Dynamic Recommendation ---
+    def generate_recommendation(cagr, mom_growth, volatility, anomalies):
+        if cagr > 10:
+            trend = "strong growth"
+            action = "increase inventory and scale marketing campaigns"
+        elif cagr > 0:
+            trend = "moderate growth"
+            action = "maintain steady operations with cautious optimizations"
+        else:
+            trend = "a decline"
+            action = "focus on cost optimization and strengthen customer retention"
+
+        if volatility > 0.2 * abs(cagr):
+            risk = "However, forecasts show high volatility, so plan for uncertainty and buffer inventory."
+        else:
+            risk = "The forecast appears relatively stable with low uncertainty."
+
+        anomaly_text = "Recent anomalies suggest potential supply chain or demand shocks to investigate." if anomalies else ""
+
+        return (
+            f"Revenue is projected to show {trend} with a CAGR of {cagr:.2f}%. "
+            f"Recommended action: {action}. {risk} {anomaly_text}"
+        )
+
+    # Example inputs — re-use KPIs you already computed
+    forecast_cagr = fore_cagr * 100   # convert ratio → %
+    mom_growth = monthly_growth_rate
+    volatility = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
+    anomalies = anomaly_detected_flag if 'anomaly_detected_flag' in locals() else False
+
+    recommendation = generate_recommendation(forecast_cagr, mom_growth, volatility, anomalies)
+    st.markdown(f"**Automated Recommendation:** {recommendation}")
+
     st.markdown("### Actionable next steps")
     st.markdown(
         """
