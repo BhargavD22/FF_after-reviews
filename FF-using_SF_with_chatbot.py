@@ -960,6 +960,43 @@ with tab3:
         st.info("Recommendation Category: Maintain")
 
     st.markdown(f"**Automated Recommendation:** {recommendation_text}")
+    st.markdown("---")
+    st.markdown("### Actionable Next Steps")
+
+    # --- Dynamic Next Steps Generator ---
+    def generate_next_steps(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
+        steps = []
+
+        # Growth actions
+        if cagr_pct > 10:
+            steps.append("📦 Align budgets and inventory planning to meet forecast peaks.")
+            steps.append("📢 Increase marketing and promotions to maximize growth momentum.")
+            steps.append("👥 Consider scaling headcount or logistics capacity.")
+        elif cagr_pct > 0:
+            steps.append("⚖️ Maintain steady operations while optimizing supply chain costs.")
+            steps.append("📊 Monitor leading indicators like customer acquisition and basket size.")
+            steps.append("⏱️ Re-run forecasts monthly to validate continued growth trajectory.")
+        else:
+            steps.append("💰 Focus on cost optimization across operations.")
+            steps.append("🔍 Deep-dive into segments or SKUs contributing to decline.")
+            steps.append("🤝 Explore customer retention campaigns to protect revenue base.")
+
+        # Volatility actions
+        if volatility_val > 0.2 * abs(cagr_pct):
+            steps.append("⚠️ Build buffer inventory and contingency plans for uncertain demand.")
+            steps.append("📉 Stress test budgets against multiple demand scenarios.")
+
+        # Anomaly actions
+        if anomalies_bool:
+            steps.append("🚨 Investigate anomalies in recent data — check for supply chain shocks, promotions, or reporting issues.")
+
+        return steps
+
+    # --- Generate and Display Next Steps ---
+    next_steps = generate_next_steps(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
+    for step in next_steps:
+        st.markdown(f"- {step}")
+
 
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
