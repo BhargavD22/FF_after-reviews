@@ -1329,4 +1329,3 @@ overlay_html = overlay_html.replace("__ICON_B64__", _CHAT_ICON_B64)
 
 # Render with zero height; overlay is attached to parent DOM and floats globally
 st.components.v1.html(overlay_html, height=0, scrolling=False)
-
