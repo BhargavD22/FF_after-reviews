@@ -1,40 +1,86 @@
 Financial Forecasting Dashboard: Wireframe Document
 Goal: To provide a dynamic interface for analyzing historical revenue, configuring a Prophet forecasting model, visualizing future trends, and assessing model performance.
 
-I. Overall Layout & Persistent Elements
-Element	Description	Function/Purpose
-Header	📈 Financial Forecasting Dashboard title and a brief description.	Identifies the application and its purpose (dynamic analysis and Prophet forecasting).
-Watermark	Subtle text at the bottom right.	Attribution/branding (Created by Gemini for Data Analytics).
-Main Tabs	Two primary content tabs: 📊 Forecast and 📈 Model Performance.	Segregates the business analysis view from the technical modeling view.
+The application allows users to interactively:
+1.  **Configure a time-series forecast** (number of months, confidence interval, seasonality).
+2.  **Apply a "What-if" scenario** (simulating a future percentage change in revenue).
+3.  **Visualize historical and forecasted revenue** using interactive Plotly charts (daily, monthly, cumulative).
+4.  **Analyze core and growth KPIs** (Total Revenue, Avg. Daily Revenue, CAGR, MoM/YoY growth).
+5.  **Evaluate model performance** using metrics like MAE, RMSE, WAPE, and Forecast Bias.
+6.  **View automated insights and recommendations** based on the forecast's projected growth (CAGR).
+7.  **Deep Dive** into seasonality, volatility, and anomaly detection.
 
+Here is a structured summary of the key components and functionalities:
 
-II. Sidebar (Control Panel)
-The sidebar is the primary control panel where the user interacts with data input and model configuration settings.
+***
 
-Section	Element	Type	Function/Purpose
-Upload Dataset	File Uploader	Input (CSV)	Allows the user to upload a CSV file with ds (date) and y (revenue) columns.
-⚙️ Settings			Main configuration group.
-Forecast Period	Slider (1 to 60 months)	Input (Integer)	Sets the number of months the Prophet model will predict into the future.
-Model Configuration	Confidence Interval Slider (80% to 99%)	Input (Percentage)	Defines the width of the uncertainty band (yhat_lower and yhat_upper) on charts.
-Seasonality Controls	Weekly/Yearly Checkboxes	Toggle (Boolean)	Enables or disables the respective seasonality components for the Prophet model training.
-What-if Scenario	Number Input (-100.0 to 100.0%)	Input (Float)	Applies a percentage adjustment to all forecasted revenue values (yhat) for simulation purposes.
-🔖 Bookmarks	List of internal page links.	Navigation	Provides quick, smooth-scrolling links to key sections within the main content area.
+## ⚙️ Key Components and Libraries
 
+| Component | Purpose | Details |
+| :--- | :--- | :--- |
+| **Streamlit** | Main Framework | Creates the interactive, data-driven web application and UI. |
+| **Prophet** (from Meta) | Forecasting Engine | Used to train a time-series model on historical revenue (`ds`, `y`) and generate future forecasts (`yhat`, `yhat_lower`, `yhat_upper`). |
+| **Snowflake** | Database Integration | Connects to a Snowflake instance (using `st.secrets`) to fetch historical data from `financial_forecast` and persist the generated forecast to `financial_forecast_output`. |
+| **Pandas** | Data Handling | Used for data cleaning, transformation, aggregation (e.g., monthly grouping, moving averages), and KPI calculations. |
+| **Plotly Graph Objects** | Visualization | Generates all the interactive charts (Historical Trend, Daily Forecast, Cumulative Trend, Model Components, Seasonality). |
+| **Custom CSS/HTML** | Styling & UX | Applies custom styling for a modern look, defines KPI card styles, and creates a floating chat widget using JavaScript. |
 
-III. Main Content - Tab 1: 📊 Forecast
-This tab focuses on displaying the core business results, trends, and future predictions based on the user's settings.
+***
 
-Section Title	Structure	Content/Functionality
-🔑 Core Business Metrics	Collapsible Expander (Default: Expanded) with a two-column layout of 3 KPI cards each.	Displays aggregate performance indicators: Historical Metrics (Total Revenue, Avg. Daily Revenue, CAGR) and Forecasted Metrics (Total Forecasted Revenue, Avg. Daily Forecasted Revenue, Forecasted CAGR). Includes percentage delta indicators (Up/Down arrow) comparing Forecasted vs. Historical totals/averages.
-📈 Growth Metrics: MoM & YoY	Collapsible Expander (Default: Expanded) with a date range filter and a two-row, two-column KPI card layout.	Date Range Filter: Allows users to select a specific date range within the historical data to calculate growth. KPI Cards: Display the Latest Historical MoM/YoY Growth and the Latest Forecasted MoM/YoY Growth rates.
-Daily Revenue Forecast and Historical Trend	Line Chart with a separate Date Range Filter and Range Slider.	Shows the actual historical data, the forecasted data, the 30-day moving average (historical and forecasted), and the confidence interval shading. A dashed vertical line marks the historical/forecast split.
-Cumulative Revenue Trend	Line Chart with a separate Date Range Filter.	Visualizes the running total revenue over time, showing the cumulative growth path for both historical performance (solid line) and the future forecast (dashed line).
-🧾 Forecast Table	Dataframe and Download Button.	Displays the raw, final forecast data (ds, yhat_what_if, yhat_lower, yhat_upper) for the selected forecast period. The Download Button allows exporting this data as a CSV.
+## 📊 Core Functionalities by Tab
 
+### 1. 📊 Forecast Tab
 
-IV. Main Content - Tab 2: 📈 Model Performance
-This tab provides technical feedback on the model's accuracy and decomposition.
+This is the main dashboard focusing on the output of the forecast.
 
-Section Title	Structure	Content/Functionality
-📊 Model Performance	Four KPI cards in a single row.	Displays key error metrics calculated on the historical data: Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), WAPE (Weighted Absolute Percentage Error), and Forecast Bias.
-📉 Time Series Components	Multi-panel Plotly Chart.	Shows the core components of the Prophet model: Trend, Weekly Seasonality, and Yearly Seasonality. This allows users to understand the underlying drivers of the forecast.
+* **Data Source:** Fetches historical data from Snowflake (`financial_forecast` table) and the generated forecast from the `financial_forecast_output` table (which is updated on every run).
+* **KPIs (Key Performance Indicators):**
+    * **Historical:** Total Revenue, Avg. Daily Revenue, Historical CAGR.
+    * **Forecasted:** Total Revenue, Avg. Daily Revenue, Forecasted CAGR (includes delta comparison vs. Historical).
+* **Growth Metrics:** Visualizes **Monthly Revenue** with **MoM (Month-over-Month)** and **YoY (Year-over-Year)** growth figures for both historical and forecasted periods.
+* **Charts:**
+    * **Historical Revenue & Moving Average:** Shows past trends.
+    * **Daily Revenue Forecast:** Combines historical data with the daily forecast, including the user-selected confidence interval (upper/lower bounds).
+    * **Cumulative Revenue Trend:** Tracks total revenue accumulation over time for comparison.
+* **What-If Scenario:** The user's percentage change input in the sidebar is applied directly to the base forecast (`yhat`) to create a `yhat_what_if` column, which is used if the feature is enabled.
+
+### 2. 📈 Model Performance Tab
+
+Focuses on validating the quality of the Prophet model.
+
+* **Error Metrics:** Calculates and displays key performance indicators based on the model's performance on historical data:
+    * **MAE** (Mean Absolute Error)
+    * **RMSE** (Root Mean Squared Error)
+    * **WAPE** (Weighted Absolute Percentage Error)
+    * **Forecast Bias**
+* **Time Series Components:** Renders the Prophet component plots showing the **Trend**, **Yearly Seasonality**, and **Weekly Seasonality** extracted by the model.
+
+### 3. 📚 Insights & Recommendations Tab
+
+Provides a high-level summary and actionable business advice.
+
+* **Summary:** Lists the total revenue and CAGR for historical and forecasted periods.
+* **Automated Recommendation:** Generates a dynamic text recommendation based on the **Forecasted CAGR** (e.g., "Expand" for high growth, "Optimize" for decline). It also considers **Volatility** and **Anomaly Detection**.
+* **Actionable Next Steps:** Provides a bulleted list of suggested business actions (e.g., adjust inventory, focus on cost optimization) derived from the forecast's characteristics.
+
+### 4. 💡 Deep Dive Analysis Tab
+
+Offers advanced technical and financial analyses.
+
+* **Revenue Momentum:** Calculates 7-day, 30-day, and 90-day growth rates.
+* **Seasonality Insights:** Displays bar charts for **Average Revenue by Day of Week** and **Month of Year** to reveal underlying patterns.
+* **Seasonal Strength Index:** Quantifies the percentage of revenue variability explained by seasonality versus trend and noise.
+* **Risk & Volatility:** Plots the **Revenue Volatility Index (30-day Rolling)** and **Revenue Drawdown from Peak (%)** to assess risk.
+* **Anomaly Detection:** Flags historical data points that are more than 3 standard deviations away from the model's prediction.
+* **Financial KPI Insights:** Calculates **Annual Run-Rate (ARR)** and tracks **Growth Target Tracking**.
+
+***
+
+## 🛠️ Code Structure Highlights
+
+* **Configuration:** Defines constants for file paths, sets the Streamlit page layout (`st.set_page_config`).
+* **Helper Functions:** Includes `get_image_base64` for encoding images and `safe_cagr` for calculating the Compound Annual Growth Rate robustly.
+* **Sidebar:** Controls for `forecast_months`, `confidence_interval`, seasonality toggles, and the **What-if Scenario** percentage.
+* **Snowflake Connection:** Establishes connection using `st.secrets`, fetches the historical data, and saves the new forecast back to a dedicated output table using `snowflake.connector.pandas_tools.write_pandas`.
+* **Custom HTML/CSS:** Injects styling for KPI cards, sidebar, and overall theme.
+* **Chat Overlay:** Includes a self-contained JavaScript snippet at the end of the script to create a floating chat assistant overlay via a Shadow DOM.
