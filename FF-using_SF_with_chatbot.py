@@ -206,7 +206,7 @@ try:
 
     query = "SELECT DS, Y FROM financial_forecast ORDER BY DS"
     df = pd.read_sql(query, conn)
-    conn.close()
+    #conn.close()
     
     # Force rename columns
     df.columns = df.columns.str.lower()   # turns DS → ds, Y → y
@@ -256,7 +256,7 @@ try:
     
     from snowflake.connector.pandas_tools import write_pandas
     write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
-    
+    conn.close()
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
