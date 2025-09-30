@@ -193,12 +193,12 @@ try:
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS financial_forecast_output (
-            ds DATE,
-            yhat FLOAT,
-            yhat_lower FLOAT,
-            yhat_upper FLOAT,
-            yhat_what_if FLOAT,
-            run_timestamp TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+            DS DATE,
+            YHAT FLOAT,
+            YHAT_LOWER FLOAT,
+            YHAT_UPPER FLOAT,
+            YHAT_WHAT_IF FLOAT,
+            RUN_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
     """)
     conn.commit()
