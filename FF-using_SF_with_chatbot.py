@@ -334,7 +334,7 @@ with tab1:
     avg_historical_revenue = df['y'].mean()
 
     # Ensure the max historical date is treated as a full datetime object for comparison
-    max_historical_date = df['ds'].max() #.astype('datetime64[ns]')
+    max_historical_date = df['ds'].max()
     forecast_df = forecast[forecast['ds'] > max_historical_date]
     total_forecasted_revenue = forecast_df[forecast_col].sum() if not forecast_df.empty else 0.0
     avg_forecasted_revenue = forecast_df[forecast_col].mean() if not forecast_df.empty else 0.0
