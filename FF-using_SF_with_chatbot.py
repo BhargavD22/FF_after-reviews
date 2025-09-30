@@ -218,9 +218,7 @@ try:
         "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
         conn)
     forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
-    conn.close()
-
-
+    #conn.close()
 
 except Exception as e:
     st.error(f"❌ Error fetching data from Snowflake: {e}")
