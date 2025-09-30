@@ -190,6 +190,19 @@ try:
         database=st.secrets["snowflake"]["database"],
         schema=st.secrets["snowflake"]["schema"]
     )
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS financial_forecast_output (
+            ds DATE,
+            yhat FLOAT,
+            yhat_lower FLOAT,
+            yhat_upper FLOAT,
+            yhat_what_if FLOAT,
+            run_timestamp TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        )
+    """)
+    conn.commit()
+
 
     query = "SELECT DS, Y FROM financial_forecast ORDER BY DS"
     df = pd.read_sql(query, conn)
@@ -201,6 +214,12 @@ try:
     # Ensure correct dtypes
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
+        forecast_df = pd.read_sql(
+        "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
+        conn
+    )
+    forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
+
 
 
 except Exception as e:
@@ -230,6 +249,18 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast = model.predict(future)
     forecast['ds'] = pd.to_datetime(forecast['ds'])
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
+    try:
+    # Clear previous run
+    cur.execute("TRUNCATE TABLE financial_forecast_output")
+    conn.commit()
+
+    from snowflake.connector.pandas_tools import write_pandas
+    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
+
+    st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
+    except Exception as e:
+    st.sidebar.error(f"❌ Error saving forecast: {e}")
+
 
 # Choose forecast column
 if what_if_enabled:
