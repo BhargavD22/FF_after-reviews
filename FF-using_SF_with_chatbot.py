@@ -345,8 +345,8 @@ with tab1:
     avg_revenue_delta = ((avg_forecasted_revenue - avg_historical_revenue) / avg_historical_revenue * 100) if avg_historical_revenue != 0 else 0.0
     
     # CAGR calculations (safely)
-    first_date_hist = df['ds'].min()
-    last_date_hist = df['ds'].max()
+    first_date_hist = df['ds'].min().date()
+    last_date_hist = df['ds'].max().date()
     first_revenue_hist = df.loc[df['ds'] == first_date_hist, 'y'].iloc[0]
     last_revenue_hist = df.loc[df['ds'] == last_date_hist, 'y'].iloc[0]
     num_years_hist = (last_date_hist - first_date_hist).days / 365.25
