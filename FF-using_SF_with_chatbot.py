@@ -214,10 +214,9 @@ try:
     # Ensure correct dtypes
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
-        forecast_df = pd.read_sql(
+    forecast_df = pd.read_sql(
         "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
-        conn
-    )
+        conn)
     forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
 
 
