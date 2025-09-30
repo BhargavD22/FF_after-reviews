@@ -248,7 +248,7 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast['ds'] = pd.to_datetime(forecast['ds'])
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
     #Convert the DS column to a Python date object
-    forecast['DS'] = forecast['DS'].dt.date
+    forecast['ds'] = forecast['ds'].dt.date
     forecast.columns = forecast.columns.str.upper()
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
