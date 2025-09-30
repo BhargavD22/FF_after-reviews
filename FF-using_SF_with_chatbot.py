@@ -244,21 +244,22 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
 
     future = model.make_future_dataframe(periods=forecast_period_days)
     future['floor'] = 0
-
+    ## this is where we compute the forecast
     forecast = model.predict(future)
     forecast['ds'] = pd.to_datetime(forecast['ds'])
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
-    try:
-        # Clear previous run
-        cur.execute("TRUNCATE TABLE financial_forecast_output")
-        conn.commit()
+# This is where we put the forecast values back into snowflake finance_forecast_output table
+try:
+    # Clear previous run
+    cur.execute("TRUNCATE TABLE financial_forecast_output")
+    conn.commit()
     
-        from snowflake.connector.pandas_tools import write_pandas
-        write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
+    from snowflake.connector.pandas_tools import write_pandas
+    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
     
-        st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
-    except Exception as e:
-        st.sidebar.error(f"❌ Error saving forecast: {e}")
+    st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
+except Exception as e:
+    st.sidebar.error(f"❌ Error saving forecast: {e}")
 
 
 # Choose forecast column
@@ -290,6 +291,7 @@ with tab1:
         name='Historical Daily Revenue',
         line=dict(color='rgba(11,110,246,0.35)', width=1),
         hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+        
     ))
     fig_hist.add_trace(go.Scatter(
         x=df['ds'], y=df['30_day_avg'],
