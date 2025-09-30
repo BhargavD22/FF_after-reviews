@@ -218,6 +218,7 @@ try:
         "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
         conn)
     forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
+    conn.close()
 
 
 
@@ -256,8 +257,8 @@ try:
     
     from snowflake.connector.pandas_tools import write_pandas
     write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
-    conn.close()
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
+    conn.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
 
