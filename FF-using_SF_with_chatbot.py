@@ -271,6 +271,7 @@ try:
     #write_pandas(conn_write, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
     write_pandas(conn_write, forecast[['DS','YHAT','YHAT_LOWER','YHAT_UPPER','YHAT_WHAT_IF']], "FINANCIAL_FORECAST_OUTPUT")
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
+    forecast.columns = forecast.columns.str.lower()
     conn_write.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
