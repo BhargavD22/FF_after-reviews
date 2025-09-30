@@ -206,7 +206,7 @@ try:
 
     query = "SELECT DS, Y FROM financial_forecast ORDER BY DS"
     df = pd.read_sql(query, conn)
-    #conn.close()
+    conn.close()
     
     # Force rename columns
     df.columns = df.columns.str.lower()   # turns DS → ds, Y → y
@@ -251,14 +251,25 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
-    # Clear previous run
-    cur.execute("TRUNCATE TABLE financial_forecast_output")
-    conn.commit()
+    # --- RE-ESTABLISH CONNECTION FOR WRITING ---
+    conn_write = snowflake.connector.connect(
+        user=st.secrets["snowflake"]["user"],
+        password=st.secrets["snowflake"]["password"],
+        account=st.secrets["snowflake"]["account"],
+        warehouse=st.secrets["snowflake"]["warehouse"],
+        database=st.secrets["snowflake"]["database"],
+        schema=st.secrets["snowflake"]["schema"]
+    )
+    cur_write = conn_write.cursor()
+    
+    # Clear previous run using the new cursor
+    cur_write.execute("TRUNCATE TABLE financial_forecast_output")
+    conn_write.commit()
     
     from snowflake.connector.pandas_tools import write_pandas
-    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
+    write_pandas(conn_write, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
-    conn.close()
+    conn_write.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
 
