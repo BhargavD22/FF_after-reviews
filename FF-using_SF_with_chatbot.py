@@ -249,16 +249,16 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast['ds'] = pd.to_datetime(forecast['ds'])
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
     try:
-    # Clear previous run
-    cur.execute("TRUNCATE TABLE financial_forecast_output")
-    conn.commit()
-
-    from snowflake.connector.pandas_tools import write_pandas
-    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
-
-    st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
+        # Clear previous run
+        cur.execute("TRUNCATE TABLE financial_forecast_output")
+        conn.commit()
+    
+        from snowflake.connector.pandas_tools import write_pandas
+        write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
+    
+        st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
     except Exception as e:
-    st.sidebar.error(f"❌ Error saving forecast: {e}")
+        st.sidebar.error(f"❌ Error saving forecast: {e}")
 
 
 # Choose forecast column
