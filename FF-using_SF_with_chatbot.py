@@ -245,8 +245,8 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     future['floor'] = 0
     ## this is where we compute the forecast
     forecast = model.predict(future)
-    forecast['ds'] = pd.to_datetime(forecast['DS'])
-    forecast['yhat_what_if'] = forecast['YHAT'] * (1 + what_if_change / 100.0)
+    forecast['ds'] = pd.to_datetime(forecast['ds'])
+    forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
     # --- RE-ESTABLISH CONNECTION FOR WRITING ---
