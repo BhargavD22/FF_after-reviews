@@ -341,6 +341,7 @@ with tab1:
         cagr_forecast = safe_cagr(first_revenue_forecast, last_revenue_forecast, num_years_forecast)
     else:
         cagr_forecast = 0.0
+    
 
 # --------------------------
 # 2️⃣ KPI Rendering (3 cards per row)
