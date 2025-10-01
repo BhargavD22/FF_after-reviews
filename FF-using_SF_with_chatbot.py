@@ -193,12 +193,12 @@ try:
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS financial_forecast_output (
-            DS DATE,
-            YHAT FLOAT,
-            YHAT_LOWER FLOAT,
-            YHAT_UPPER FLOAT,
-            YHAT_WHAT_IF FLOAT,
-            RUN_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+            ds DATE,
+            yhat FLOAT,
+            yhat_lower FLOAT,
+            yhat_upper FLOAT,
+            yhat_what_if FLOAT,
+            run_timestamp TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
     """)
     conn.commit()
@@ -215,10 +215,12 @@ try:
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
     forecast_df = pd.read_sql(
-        "SELECT DS, YHAT, YHAT_LOWER, YHAT_UPPER, YHAT_WHAT_IF FROM financial_forecast_output ORDER BY DS",
+        "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
         conn)
     forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
     conn.close()
+
+
 
 except Exception as e:
     st.error(f"❌ Error fetching data from Snowflake: {e}")
@@ -247,32 +249,16 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast = model.predict(future)
     forecast['ds'] = pd.to_datetime(forecast['ds'])
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
-    #Convert the DS column to a Python date object
-    forecast['ds'] = forecast['ds'].dt.date
-    forecast.columns = forecast.columns.str.upper()
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
-    # --- RE-ESTABLISH CONNECTION FOR WRITING ---
-    conn_write = snowflake.connector.connect(
-        user=st.secrets["snowflake"]["user"],
-        password=st.secrets["snowflake"]["password"],
-        account=st.secrets["snowflake"]["account"],
-        warehouse=st.secrets["snowflake"]["warehouse"],
-        database=st.secrets["snowflake"]["database"],
-        schema=st.secrets["snowflake"]["schema"]
-    )
-    cur_write = conn_write.cursor()
-    
-    # Clear previous run using the new cursor
-    cur_write.execute("TRUNCATE TABLE financial_forecast_output")
-    conn_write.commit()
+    # Clear previous run
+    cur.execute("TRUNCATE TABLE financial_forecast_output")
+    conn.commit()
     
     from snowflake.connector.pandas_tools import write_pandas
-    #write_pandas(conn_write, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
-    write_pandas(conn_write, forecast[['DS','YHAT','YHAT_LOWER','YHAT_UPPER','YHAT_WHAT_IF']], "FINANCIAL_FORECAST_OUTPUT")
+    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
-    forecast.columns = forecast.columns.str.lower()
-    conn_write.close()
+    conn.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
 
@@ -294,424 +280,1001 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Forecast", "📈 Model Performance", "�
 
 # ---------------------- TAB 1: Forecast ----------------------
 with tab1:
-    st.markdown('', unsafe_allow_html=True)
+        # ---- Historical Revenue & 30-Day Moving Average (unchanged but restyled) ----
+    st.markdown('<div id="historical-trends"></div>', unsafe_allow_html=True)
     st.subheader("Historical Revenue & 30-Day Moving Average")
-
-    # Calculate 30-day moving average
     df['30_day_avg'] = df['y'].rolling(window=30, min_periods=1).mean()
 
-    # Build historical revenue figure with Plotly
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Scatter(
-        x=df['ds'],
-        y=df['y'],
+        x=df['ds'], y=df['y'],
         mode='lines',
         name='Historical Daily Revenue',
         line=dict(color='rgba(11,110,246,0.35)', width=1),
-        hovertemplate='%{x|%Y-%m-%d}<br>Revenue: %{y:.2f}<extra></extra>'
+        hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+        
     ))
     fig_hist.add_trace(go.Scatter(
-        x=df['ds'],
-        y=df['30_day_avg'],
+        x=df['ds'], y=df['30_day_avg'],
         mode='lines',
         name='30-Day Moving Avg',
-        line=dict(color='rgb(31,157,85)', width=3),
-        hovertemplate='%{x|%Y-%m-%d}<br>30-Day Avg: %{y:.2f}<extra></extra>'
+        line=dict(color='#1f9d55', width=3),
+        hovertemplate='<b>Date:</b> %{x|%Y-%m-%m}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
     ))
-
-    # Prepare forecast filtering and metrics
-    forecast_ds = pd.to_datetime(forecast['ds'])
-    max_historical_date = df['ds'].max()
-    forecast_filtered = forecast[(forecast_ds > max_historical_date)]
-
-    if not forecast_filtered.empty:
-        # Calculate forecast 30-day moving average
-        forecast_filtered['30_day_avg'] = forecast_filtered[forecast_col.lower()].rolling(window=30, min_periods=1).mean()
-
-        fig_hist.add_trace(go.Scatter(
-            x=forecast_filtered['ds'],
-            y=forecast_filtered[forecast_col.lower()],
-            mode='lines',
-            name='Forecasted Daily Revenue',
-            line=dict(color='rgba(22,163,74,0.6)', width=1, dash='dash'),
-            hovertemplate='%{x|%Y-%m-%d}<br>Forecast: %{y:.2f}<extra></extra>'
-        ))
-
-        fig_hist.add_trace(go.Scatter(
-            x=forecast_filtered['ds'],
-            y=forecast_filtered['30_day_avg'],
-            mode='lines',
-            name='Forecasted 30-Day Moving Avg',
-            line=dict(color='purple', width=3, dash='dash'),
-            hovertemplate='%{x|%Y-%m-%d}<br>Forecast 30-Day Avg: %{y:.2f}<extra></extra>'
-        ))
-
-    # Layout options
-    fig_hist.update_layout(
-        title='Historical Revenue and Moving Average',
-        xaxis_title='Date',
-        yaxis_title='Revenue',
-        template='plotly_white',
-        hovermode='x unified',
-        xaxis_rangeslider_visible=True,
-        transition_duration=500
-    )
-
+    fig_hist.update_layout(title="Historical Revenue and Moving Average",
+                           xaxis_title="Date", yaxis_title="Revenue (in thousands of $)",
+                           yaxis=dict(tickprefix="$"), template="plotly_white", hovermode="x unified",
+                           xaxis_rangeslider_visible=True, transition_duration=500)
     st.plotly_chart(fig_hist, use_container_width=True)
 
     st.markdown("---")
-
-    # Core Business Metrics KPIs
+    # ---- KPIs (Core Business Metrics) ----
+    st.markdown('<div id="core-kpis"></div>', unsafe_allow_html=True)
+    st.markdown("### 🔑 Core Business Metrics")
+    st.markdown("---")
+    
+    # --------------------------
+    # 1️⃣ KPI Calculations
+    # --------------------------
     total_historical_revenue = df['y'].sum()
     avg_historical_revenue = df['y'].mean()
-    total_forecasted_revenue = forecast_filtered[forecast_col.lower()].sum() if not forecast_filtered.empty else 0.0
-    avg_forecasted_revenue = forecast_filtered[forecast_col.lower()].mean() if not forecast_filtered.empty else 0.0
-
-    # Calculate historical CAGR
+    
+    forecast_df = forecast[forecast['ds'] > df['ds'].max()]
+    total_forecasted_revenue = forecast_df[forecast_col].sum() if not forecast_df.empty else 0.0
+    avg_forecasted_revenue = forecast_df[forecast_col].mean() if not forecast_df.empty else 0.0
+    
+    # deltas
+    total_revenue_delta = ((total_forecasted_revenue - total_historical_revenue) / total_historical_revenue * 100) if total_historical_revenue != 0 else 0.0
+    avg_revenue_delta = ((avg_forecasted_revenue - avg_historical_revenue) / avg_historical_revenue * 100) if avg_historical_revenue != 0 else 0.0
+    
+    # CAGR calculations (safely)
     first_date_hist = df['ds'].min()
     last_date_hist = df['ds'].max()
+    first_revenue_hist = df.loc[df['ds'] == first_date_hist, 'y'].iloc[0]
+    last_revenue_hist = df.loc[df['ds'] == last_date_hist, 'y'].iloc[0]
     num_years_hist = (last_date_hist - first_date_hist).days / 365.25
-    first_revenue_hist = df.loc[df['ds'] == first_date_hist, 'y'].values[0]
-    last_revenue_hist = df.loc[df['ds'] == last_date_hist, 'y'].values[0]
     cagr_hist = safe_cagr(first_revenue_hist, last_revenue_hist, num_years_hist)
-
-    # Calculate forecasted CAGR if forecast exists
-    if not forecast_filtered.empty:
-        first_date_forecast = forecast_filtered['ds'].min()
-        last_date_forecast = forecast_filtered['ds'].max()
+    
+    first_date_forecast = df['ds'].max()
+    if not forecast_df.empty:
+        last_date_forecast = forecast_df['ds'].max()
+        first_revenue_forecast = df.loc[df['ds'] == first_date_forecast, 'y'].iloc[0]
+        last_revenue_forecast = forecast_df.loc[forecast_df['ds'] == last_date_forecast, forecast_col].iloc[0]
         num_years_forecast = (last_date_forecast - first_date_forecast).days / 365.25
-        first_revenue_forecast = forecast_filtered.loc[forecast_filtered['ds'] == first_date_forecast, forecast_col.lower()].values[0]
-        last_revenue_forecast = forecast_filtered.loc[forecast_filtered['ds'] == last_date_forecast, forecast_col.lower()].values[0]
         cagr_forecast = safe_cagr(first_revenue_forecast, last_revenue_forecast, num_years_forecast)
     else:
         cagr_forecast = 0.0
+    
 
-    # Revenue delta
-    revenue_delta = total_forecasted_revenue - total_historical_revenue
-    revenue_delta_pct = (revenue_delta / total_historical_revenue) * 100 if total_historical_revenue != 0 else 0.0
+# --------------------------
+# 2️⃣ KPI Rendering (3 cards per row)
+# --------------------------
 
-    # Display KPIs in three columns
-    col1, col2, col3 = st.columns(3)
+# --- Historical Metrics ---
+    st.markdown("#### Historical Metrics")
+    h1, h2, h3 = st.columns(3)
+    
+    with h1:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
+                <p class="kpi-title">Total Historical Revenue</p>
+                <p class="kpi-value">${total_historical_revenue/1000:,.2f}M</p>
+                <p class="kpi-subtitle">Sum of all past revenue</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with h2:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
+                <p class="kpi-title">Avg. Daily Historical Revenue</p>
+                <p class="kpi-value">${avg_historical_revenue:,.2f}</p>
+                <p class="kpi-subtitle">Average daily revenue in the past</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with h3:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-historical">
+                <p class="kpi-title">Historical CAGR</p>
+                <p class="kpi-value">{cagr_hist:,.2%}</p>
+                <p class="kpi-subtitle">Avg. annual growth rate</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    # --- Forecasted Metrics ---
+    st.markdown("#### Forecasted Metrics")
+    f1, f2, f3 = st.columns(3)
+    
+    with f1:
+        delta_icon_total = "⬆️" if total_revenue_delta > 0 else "⬇️" if total_revenue_delta < 0 else "➡️"
+        delta_class_total = "positive-delta" if total_revenue_delta > 0 else "negative-delta"
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
+                <p class="kpi-title">Total Forecasted Revenue</p>
+                <p class="kpi-value">${total_forecasted_revenue/1000:,.2f}M</p>
+                <p class="kpi-subtitle">Forecasted over {forecast_months} months</p>
+                <div class="kpi-delta {delta_class_total}">
+                    <span class="delta-icon">{delta_icon_total}</span>
+                    <span>{total_revenue_delta:,.2f}% vs. Historical</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with f2:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
+                <p class="kpi-title">Avg. Daily Forecasted Revenue</p>
+                <p class="kpi-value">${avg_forecasted_revenue:,.2f}</p>
+                <p class="kpi-subtitle">Forecasted Avg. over {forecast_months} months</p>
+                <div class="kpi-delta {'positive-delta' if avg_revenue_delta>0 else 'negative-delta'}">
+                    <span class="delta-icon">{'⬆️' if avg_revenue_delta>0 else '⬇️' if avg_revenue_delta<0 else '➡️'}</span>
+                    <span>{avg_revenue_delta:,.2f}% vs. Historical</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with f3:
+        st.markdown(
+            f"""
+            <div class="kpi-container kpi-container-forecasted">
+                <p class="kpi-title">Forecasted CAGR</p>
+                <p class="kpi-value">{cagr_forecast:,.2%}</p>
+                <p class="kpi-subtitle">Avg. annual growth rate</p>
+                <div class="kpi-delta {'positive-delta' if cagr_forecast>cagr_hist else 'negative-delta'}">
+                    <span class="delta-icon">{'⬆️' if cagr_forecast>cagr_hist else '⬇️' if cagr_forecast<cagr_hist else '➡️'}</span>
+                    <span>vs. Historical CAGR</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    st.markdown("---")
 
-    with col1:
-        st.markdown(f"### Total Historical Revenue\n${total_historical_revenue:,.2f}")
-        st.markdown(f"### Average Historical Daily Revenue\n${avg_historical_revenue:,.2f}")
-        st.markdown(f"### Historical CAGR\n{cagr_hist:.2%}")
 
-    with col2:
-        st.markdown(f"### Total Forecasted Revenue\n${total_forecasted_revenue:,.2f}")
-        st.markdown(f"### Average Forecasted Daily Revenue\n${avg_forecasted_revenue:,.2f}")
-        st.markdown(f"### Forecasted CAGR\n{cagr_forecast:.2%}")
+    # ---- Growth Metrics (MoM & YoY) with monthly chart and arrow markers ----
+    with st.expander("📈 Growth Metrics", expanded=True):
+        st.markdown('<div id="growth-metrics"></div>', unsafe_allow_html=True)
+        st.subheader("Growth Metrics: MoM & YoY")
 
-    with col3:
-        st.markdown(f"### Revenue Change vs. Historical\n{revenue_delta_pct:.2f}%")
+        # Date selectors
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            start_date_growth = st.date_input(
+                "Start Date (Growth Metrics):",
+                value=df['ds'].min().date(),
+                min_value=df['ds'].min().date(),
+                max_value=df['ds'].max().date(),
+                key='growth_start'
+            )
+        with col_g2:
+            end_date_growth = st.date_input(
+                "End Date (Growth Metrics):",
+                value=df['ds'].max().date(),
+                min_value=df['ds'].min().date(),
+                max_value=df['ds'].max().date(),
+                key='growth_end'
+            )
+
+        historical_growth_df = df[(df['ds'].dt.date >= start_date_growth) & (df['ds'].dt.date <= end_date_growth)].copy()
+        historical_growth_df['month'] = historical_growth_df['ds'].dt.to_period('M').dt.to_timestamp()
+        monthly_revenue_hist = historical_growth_df.groupby('month')['y'].sum().reset_index()
+        monthly_revenue_hist['MoM_Growth'] = monthly_revenue_hist['y'].pct_change() * 100
+        monthly_revenue_hist['direction'] = monthly_revenue_hist['MoM_Growth'].apply(lambda x: 'up' if x>0 else ('down' if x<0 else 'flat'))
+
+        # Forecast monthly aggregates
+        # Forecast monthly aggregates
+        forecast_df['month'] = forecast_df['ds'].dt.to_period('M')
+        
+        if what_if_enabled:
+            monthly_revenue_forecast = (
+                forecast_df.groupby('month')['yhat_what_if']
+                .sum().reset_index()
+                .rename(columns={'yhat_what_if': 'y'})
+            )
+        else:
+            monthly_revenue_forecast = (
+                forecast_df.groupby('month')['yhat']
+                .sum().reset_index()
+                .rename(columns={'yhat': 'y'})
+            )
+        
+        # Drop last incomplete forecast month to avoid artificial dip
+        last_forecast_month = forecast_df['ds'].max().to_period('M')
+        if monthly_revenue_forecast['month'].iloc[-1] == last_forecast_month:
+            monthly_revenue_forecast = monthly_revenue_forecast.iloc[:-1]
+        
+        # Convert back to timestamp
+        monthly_revenue_forecast['month'] = monthly_revenue_forecast['month'].dt.to_timestamp()
+        
+        # Add MoM growth + direction
+        monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['y'].pct_change() * 100
+        monthly_revenue_forecast['direction'] = monthly_revenue_forecast['MoM_Growth'].apply(
+            lambda x: 'up' if x > 0 else ('down' if x < 0 else 'flat')
+        )
+        monthly_revenue_forecast['MoM_Growth'] = monthly_revenue_forecast['y'].pct_change()*100
+        monthly_revenue_forecast['direction'] = monthly_revenue_forecast['MoM_Growth'].apply(lambda x: 'up' if x>0 else ('down' if x<0 else 'flat'))
+
+        # Show latest MoM & YoY as KPI cards
+        latest_mom_hist = monthly_revenue_hist['MoM_Growth'].iloc[-1] if not monthly_revenue_hist['MoM_Growth'].empty else 0
+        latest_yoy_hist = (historical_growth_df.groupby(historical_growth_df['ds'].dt.to_period('Y'))['y'].sum().pct_change().dropna().iloc[-1]*100) if len(historical_growth_df)>365 else 0
+
+# Forecasted MoM: compare first forecasted month with last actual month
+        if not monthly_revenue_forecast.empty:
+                last_hist_month = monthly_revenue_hist['y'].iloc[-1]
+                first_forecast_month = monthly_revenue_forecast['y'].iloc[0]
+                latest_mom_forecast = ((first_forecast_month - last_hist_month) / last_hist_month * 100) if last_hist_month != 0 else 0
+        else:
+                latest_mom_forecast = 0
+
+# Forecasted YoY: same as before
+        latest_yoy_forecast = (
+         monthly_revenue_forecast.groupby(monthly_revenue_forecast['month'].dt.to_period('Y'))['y']
+         .sum().pct_change().dropna().iloc[-1]*100
+        ) if len(monthly_revenue_forecast) > 0 else 0
+
+        col7, col8 = st.columns(2)
+        with col7:
+            st.markdown(
+                f"""
+                <div class="kpi-container kpi-container-historical">
+                    <p class="kpi-title">Latest Historical MoM Growth</p>
+                    <p class="kpi-value">{latest_mom_hist:,.2f}%</p>
+                    <p class="kpi-subtitle">Change from the last actual month vs. its previous month</p>
+                </div>
+                """, unsafe_allow_html=True
+            )
+        with col8:
+            st.markdown(
+                f"""
+                <div class="kpi-container kpi-container-forecasted">
+                    <p class="kpi-title">Latest Forecasted MoM Growth</p>
+                    <p class="kpi-value">{latest_mom_forecast:,.2f}%</p>
+                    <p class="kpi-subtitle">Expected change from last actual month into forecast</p>
+                </div>
+                """, unsafe_allow_html=True
+            )
+
+        col9, col10 = st.columns(2)
+        with col9:
+            st.markdown(
+                f"""
+                <div class="kpi-container kpi-container-historical">
+                    <p class="kpi-title">Latest Historical YoY Growth</p>
+                    <p class="kpi-value">{latest_yoy_hist:,.2f}%</p>
+                    <p class="kpi-subtitle">Change vs. the same month in the previous year</p>
+                </div>
+                """, unsafe_allow_html=True
+            )
+        with col10:
+            st.markdown(
+                f"""
+                <div class="kpi-container kpi-container-forecasted">
+                    <p class="kpi-title">Latest Forecasted YoY Growth</p>
+                    <p class="kpi-value">{latest_yoy_forecast:,.2f}%</p>
+                    <p class="kpi-subtitle">Expected change vs. the same month last year (forecasted)</p>
+                </div>
+                """, unsafe_allow_html=True
+            )
+
+        # Growth chart (monthly) with arrows showing up/down points (use small annotation markers)
+        growth_fig = go.Figure()
+        if not monthly_revenue_hist.empty:
+            growth_fig.add_trace(go.Scatter(
+                x=monthly_revenue_hist['month'],
+                y=monthly_revenue_hist['y'],
+                mode='lines+markers',
+                name='Historical Monthly Revenue',
+                line=dict(color='#0b6ef6', width=2),
+                hovertemplate='Month: %{x|%b %Y}<br>Revenue: %{y:$,.2f}<extra></extra>'
+            ))
+            # add arrow markers for directions
+            for i, row in monthly_revenue_hist.iterrows():
+                if i==0: continue
+                if row['direction']=='up':
+                    growth_fig.add_annotation(x=row['month'], y=row['y'], ax=0, ay=-30, showarrow=True, arrowhead=3, arrowsize=1, arrowcolor="#1f9d55", text="")
+                elif row['direction']=='down':
+                    growth_fig.add_annotation(x=row['month'], y=row['y'], ax=0, ay=30, showarrow=True, arrowhead=3, arrowsize=1, arrowcolor="#d45a5a", text="")
+
+        if not monthly_revenue_forecast.empty:
+            growth_fig.add_trace(go.Scatter(
+                x=monthly_revenue_forecast['month'],
+                y=monthly_revenue_forecast['y'],
+                mode='lines+markers',
+                name='Forecast Monthly Revenue',
+                line=dict(color='#16a34a', width=2, dash='dot'),
+                hovertemplate='Month: %{x|%b %Y}<br>Forecast: %{y:$,.2f}<extra></extra>'
+            ))
+            # forecast arrows
+            for i, row in monthly_revenue_forecast.iterrows():
+                if i==0: continue
+                if row['direction']=='up':
+                    growth_fig.add_annotation(x=row['month'], y=row['y'], ax=0, ay=-30, showarrow=True, arrowhead=3, arrowsize=1, arrowcolor="#1f9d55", text="")
+                elif row['direction']=='down':
+                    growth_fig.add_annotation(x=row['month'], y=row['y'], ax=0, ay=30, showarrow=True, arrowhead=3, arrowsize=1, arrowcolor="#d45a5a", text="")
+
+        growth_fig.update_layout(title="Monthly Revenue (Historical vs Forecast) with Directional Arrows",
+                                 xaxis_title="Month", yaxis_title="Revenue ($)", template="plotly_white", hovermode="x unified",
+                                 transition_duration=600)
+        st.plotly_chart(growth_fig, use_container_width=True)
 
     st.markdown("---")
 
-    # Growth Metrics (MoM, YoY)
-    # Assuming monthly grouping df and forecast df exists, computing MoM and YoY in KPIs
-    monthly_revenue_hist = df.set_index('ds').resample('M')['y'].sum().reset_index()
-    monthly_revenue_forecast = pd.DataFrame()
+
+
+    # ---- Daily Revenue Chart (Combined historical + forecast) ----
+    st.markdown('<div id="daily-revenue"></div>', unsafe_allow_html=True)
+    st.subheader("Daily Revenue Forecast and Historical Trend")
+
+    col_dr1, col_dr2 = st.columns(2)
+    with col_dr1:
+        start_date_daily = st.date_input(
+            "Start Date (Daily Chart):",
+            value=df['ds'].min().date(),
+            min_value=df['ds'].min().date(),
+            max_value=forecast['ds'].max().date(),
+            key='daily_start'
+        )
+    with col_dr2:
+        end_date_daily = st.date_input(
+            "End Date (Daily Chart):",
+            value=forecast['ds'].max().date(),
+            min_value=df['ds'].min().date(),
+            max_value=forecast['ds'].max().date(),
+            key='daily_end'
+        )
+
+    combined_df_daily = combined_df[
+        (combined_df['ds'].dt.date >= start_date_daily) &
+        (combined_df['ds'].dt.date <= end_date_daily)
+    ].copy()
+
+    # 30-day rolling on combined (helps show moving avg across forecast)
+    combined_df['30_day_avg'] = combined_df['y'].rolling(window=30, min_periods=1).mean()
+
+    fig_daily = go.Figure()
+
+    hist_filtered = combined_df_daily[combined_df_daily['type'] == 'Historical']
+    forecast_filtered = combined_df_daily[combined_df_daily['type'] == 'Forecast']
+
+    if not hist_filtered.empty:
+        fig_daily.add_trace(go.Scatter(
+            x=hist_filtered['ds'], y=hist_filtered['y'],
+            mode='lines',
+            name='Historical Daily Revenue',
+            line=dict(color='rgba(11,110,246,0.35)', width=1),
+            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Revenue:</b> %{y:$,.2f}<extra></extra>'
+        ))
+        fig_daily.add_trace(go.Scatter(
+            x=hist_filtered['ds'], y=combined_df.loc[hist_filtered.index, '30_day_avg'],
+            mode='lines',
+            name='Historical 30-Day Moving Avg',
+            line=dict(color='#1f9d55', width=3),
+            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        ))
+
     if not forecast_filtered.empty:
-        monthly_revenue_forecast = forecast_filtered.set_index('ds').resample('M')[forecast_col.lower()].sum().reset_index()
+        fig_daily.add_trace(go.Scatter(
+            x=forecast_filtered['ds'], y=forecast_filtered['y'],
+            mode='lines',
+            name='Forecasted Daily Revenue',
+            line=dict(color='rgba(22,163,74,0.6)', width=1, dash='dot'),
+            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Forecasted:</b> %{y:$,.2f}<extra></extra>'
+        ))
+        fig_daily.add_trace(go.Scatter(
+            x=forecast_filtered['ds'], y=combined_df.loc[forecast_filtered.index, '30_day_avg'],
+            mode='lines',
+            name='Forecasted 30-Day Moving Avg',
+            line=dict(color='purple', width=3, dash='dash'),
+            hovertemplate='<b>Date:</b> %{x|%Y-%m-%d}<br><b>Forecast 30-Day Avg:</b> %{y:$,.2f}<extra></extra>'
+        ))
 
-    latest_mom_hist = 0.0
-    if len(monthly_revenue_hist) >= 2:
-        latest_mom_hist = ((monthly_revenue_hist['y'].iloc[-1] - monthly_revenue_hist['y'].iloc[-2]) / monthly_revenue_hist['y'].iloc[-2]) * 100
+    # Confidence interval shading for forecast within selected range
+    forecast_filtered_bounds = forecast[
+        (forecast['ds'].dt.date >= start_date_daily) &
+        (forecast['ds'].dt.date <= end_date_daily) &
+        (forecast['ds'] > df['ds'].max())
+    ]
+    if not forecast_filtered_bounds.empty:
+        fig_daily.add_trace(go.Scatter(
+            x=list(forecast_filtered_bounds['ds']) + list(forecast_filtered_bounds['ds'])[::-1],
+            y=list(forecast_filtered_bounds['yhat_upper']) + list(forecast_filtered_bounds['yhat_lower'])[::-1],
+            fill='toself',
+            fillcolor='rgba(22,163,74,0.08)',
+            line=dict(color='rgba(255,255,255,0)'),
+            hoverinfo='skip',
+            showlegend=True,
+            name=f"{int(confidence_interval*100)}% Confidence Interval"
+        ))
 
-    latest_mom_forecast = 0.0
-    if not monthly_revenue_forecast.empty and len(monthly_revenue_forecast) >= 2:
-        latest_mom_forecast = ((monthly_revenue_forecast[forecast_col.lower()].iloc[1] - monthly_revenue_hist['y'].iloc[-1]) / monthly_revenue_hist['y'].iloc[-1]) * 100
+    # Mark forecast start
+    start_of_forecast = df['ds'].max()
+    if start_of_forecast >= pd.to_datetime(start_date_daily) and start_of_forecast <= pd.to_datetime(end_date_daily):
+        fig_daily.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="#ef4444")
+        fig_daily.add_annotation(
+            x=start_of_forecast,
+            y=1.02,
+            xref="x",
+            yref="paper",
+            text="Forecast begins here",
+            showarrow=False,
+            font=dict(color="#ef4444")
+        )
 
-    latest_yoy_hist = 0.0
-    if len(monthly_revenue_hist) >= 13:
-        latest_yoy_hist = ((monthly_revenue_hist['y'].iloc[-1] - monthly_revenue_hist['y'].iloc[-13]) / monthly_revenue_hist['y'].iloc[-13]) * 100
+    fig_daily.update_layout(
+        title="Daily Revenue: Historical vs. Forecasted",
+        xaxis_title="Date",
+        yaxis_title="Revenue (in thousands of $)",
+        yaxis=dict(tickprefix="$"),
+        template="plotly_white",
+        hovermode="x unified",
+        xaxis_rangeslider_visible=True,
+        transition_duration=500,
+        xaxis=dict(range=[start_date_daily, end_date_daily])
+    )
+    st.plotly_chart(fig_daily, use_container_width=True)
 
-    latest_yoy_forecast = 0.0
-    if not monthly_revenue_forecast.empty and len(monthly_revenue_forecast) >= 12:
-        latest_yoy_forecast = ((monthly_revenue_forecast[forecast_col.lower()].iloc[-1] - monthly_revenue_forecast[forecast_col.lower()].iloc[-13]) / monthly_revenue_forecast[forecast_col.lower()].iloc[-13]) * 100
+    st.markdown("---")
 
-    # Display growth metrics KPIs
-    colg1, colg2, colg3, colg4 = st.columns(4)
-    with colg1: st.metric("Latest Historical MoM Growth %", f"{latest_mom_hist:.2f}")
-    with colg2: st.metric("Latest Forecasted MoM Growth %", f"{latest_mom_forecast:.2f}")
-    with colg3: st.metric("Latest Historical YoY Growth %", f"{latest_yoy_hist:.2f}")
-    with colg4: st.metric("Latest Forecasted YoY Growth %", f"{latest_yoy_forecast:.2f}")
+    # ---- Cumulative Revenue chart (unchanged logic, restyled) ----
+    st.markdown('<div id="cumulative-revenue"></div>', unsafe_allow_html=True)
+    st.subheader("📈 Cumulative Revenue Trend")
+
+    col_cr1, col_cr2 = st.columns(2)
+    with col_cr1:
+        start_date_cumulative = st.date_input(
+            "Start Date (Cumulative Chart):",
+            value=df['ds'].min().date(),
+            min_value=df['ds'].min().date(),
+            max_value=forecast['ds'].max().date(),
+            key='cumulative_start'
+        )
+    with col_cr2:
+        end_date_cumulative = st.date_input(
+            "End Date (Cumulative Chart):",
+            value=forecast['ds'].max().date(),
+            min_value=df['ds'].min().date(),
+            max_value=forecast['ds'].max().date(),
+            key='cumulative_end'
+        )
+
+    combined_df['cumulative_revenue'] = combined_df['y'].cumsum()
+
+    cumulative_filtered = combined_df[
+        (combined_df['ds'].dt.date >= start_date_cumulative) &
+        (combined_df['ds'].dt.date <= end_date_cumulative)
+    ].copy()
+
+    fig_cumulative = go.Figure()
+    historical_cumulative_filtered = cumulative_filtered[cumulative_filtered['type'] == 'Historical']
+    if not historical_cumulative_filtered.empty:
+        fig_cumulative.add_trace(go.Scatter(
+            x=historical_cumulative_filtered['ds'],
+            y=historical_cumulative_filtered['cumulative_revenue'],
+            mode='lines',
+            name='Historical Revenue',
+            line=dict(color='#0b6ef6', width=3)
+        ))
+
+    forecasted_cumulative_filtered = cumulative_filtered[cumulative_filtered['type'] == 'Forecast']
+    if not forecasted_cumulative_filtered.empty:
+        last_historical_cum_sum = 0
+        if not combined_df[combined_df['type'] == 'Historical'].empty:
+            last_historical_cum_sum = combined_df[combined_df['type'] == 'Historical']['cumulative_revenue'].iloc[-1]
+        forecasted_cumulative_filtered['cumulative_revenue_adjusted'] = forecasted_cumulative_filtered['y'].cumsum() + last_historical_cum_sum
+        fig_cumulative.add_trace(go.Scatter(
+            x=forecasted_cumulative_filtered['ds'],
+            y=forecasted_cumulative_filtered['cumulative_revenue_adjusted'],
+            mode='lines',
+            name='Forecasted Revenue',
+            line=dict(color='orange', width=3, dash='dash')
+        ))
+
+    # vertical line for forecast start
+    start_of_forecast = df['ds'].max()
+    if start_of_forecast >= pd.to_datetime(start_date_cumulative) and start_of_forecast <= pd.to_datetime(end_date_cumulative):
+        fig_cumulative.add_vline(x=start_of_forecast, line_width=1, line_dash="dash", line_color="#ef4444")
+        fig_cumulative.add_annotation(
+            x=start_of_forecast,
+            y=1.02,
+            xref="x",
+            yref="paper",
+            text="Forecast begins here",
+            showarrow=False,
+            font=dict(color="#ef4444")
+        )
+
+    fig_cumulative.update_layout(
+        title="Cumulative Revenue Over Time: Historical vs. Forecasted",
+        xaxis_title="Date",
+        yaxis_title="Cumulative Revenue (in thousands of $)",
+        yaxis=dict(tickprefix="$"),
+        template="plotly_white",
+        hovermode="x unified",
+        transition_duration=500,
+        xaxis=dict(range=[start_date_cumulative, end_date_cumulative])
+    )
+    st.plotly_chart(fig_cumulative, use_container_width=True)
+
+    st.markdown("---")
+
+    # ---- Forecast Table + Download (styled) ----
+    st.markdown('<div id="forecast-table"></div>', unsafe_allow_html=True)
+    st.subheader(f"🧾 {forecast_months}-Month Forecast Table")
+    display_table = forecast[['ds', forecast_col, 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).rename(
+        columns={"ds": "Date", forecast_col: "Predicted Revenue", "yhat_lower": "Lower Bound", "yhat_upper": "Upper Bound"}
+    )
+    st.dataframe(display_table, use_container_width=True, height=300)
+    csv = display_table.to_csv(index=False)
+    st.download_button(f"⬇️ Download {forecast_months}-Month Forecast CSV", csv, f"forecast_{forecast_months}_months.csv", "text/csv")
 
 # ---------------------- TAB 2: Model Performance ----------------------
 with tab2:
-    st.markdown('', unsafe_allow_html=True)
-    st.subheader("Model Performance Metrics and Time Series Decomposition")
+    st.markdown('<div id="model-performance"></div>', unsafe_allow_html=True)
+    st.subheader("📊 Model Performance")
 
-    # Calculate residuals (difference between actual and forecast)
-    historical_forecast = forecast.loc[forecast['DS'] <= df['ds'].max()]
-    if historical_forecast.empty or df.empty:
-        st.warning("Insufficient data for model performance metrics")
+    historical_comparison = pd.merge(df, forecast, on='ds', how='inner')
+    if not historical_comparison.empty:
+        mae = np.mean(np.abs(historical_comparison['y'] - historical_comparison['yhat']))
+        rmse = np.sqrt(np.mean((historical_comparison['y'] - historical_comparison['yhat'])**2))
+        wape = np.sum(np.abs(historical_comparison['y'] - historical_comparison['yhat'])) / np.sum(np.abs(historical_comparison['y'])) * 100 if np.sum(np.abs(historical_comparison['y'])) != 0 else 0.0
+        forecast_bias = np.mean(historical_comparison['yhat'] - historical_comparison['y'])
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Mean Absolute Error (MAE)</p>
+                    <p class="kpi-value">${mae:,.2f}</p>
+                    <p class="kpi-subtitle">The average dollar amount the forecast was off by.</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col2:
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Root Mean Squared Error (RMSE)</p>
+                    <p class="kpi-value">${rmse:,.2f}</p>
+                    <p class="kpi-subtitle">Penalizes larger forecast errors more heavily.</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col3:
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">WAPE</p>
+                    <p class="kpi-value">{wape:,.2f}%</p>
+                    <p class="kpi-subtitle">A single percentage for overall forecast accuracy.</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col4:
+            st.markdown(
+                f"""
+                <div class="kpi-container">
+                    <p class="kpi-title">Forecast Bias</p>
+                    <p class="kpi-value">${forecast_bias:,.2f}</p>
+                    <p class="kpi-subtitle">Indicates consistent over (+) or under-forecasting (-).</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        
     else:
-        merged_hist = pd.merge(df, historical_forecast, left_on='ds', right_on='DS')
-        residuals = merged_hist['y'] - merged_hist[forecast_col.lower()]
+        st.info("Not enough overlapping historical/prediction data to compute performance metrics.")
 
-        # Compute MAE, RMSE, WAPE, Forecast Bias
-        mae = np.mean(np.abs(residuals))
-        rmse = np.sqrt(np.mean(residuals ** 2))
-        sum_actual = merged_hist['y'].sum()
-        sum_abs_error = np.sum(np.abs(residuals))
-        wape = (sum_abs_error / sum_actual) if sum_actual != 0 else np.nan
-        forecast_bias = np.sum(residuals) / sum_actual if sum_actual != 0 else np.nan
-
-        st.markdown("### Forecast Error Metrics")
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        col_m1.metric("Mean Absolute Error (MAE)", f"{mae:.2f}")
-        col_m2.metric("Root Mean Squared Error (RMSE)", f"{rmse:.2f}")
-        col_m3.metric("Weighted Absolute Percentage Error (WAPE)", f"{wape:.2%}")
-        col_m4.metric("Forecast Bias", f"{forecast_bias:.2%}")
-
-        st.markdown("---")
-
-        # Time series decomposition using Prophet's components plot
+    st.markdown('<div id="time-series-components"></div>', unsafe_allow_html=True)
+    st.subheader("📉 Time Series Components")
+    try:
+        components_fig = plot_components_plotly(model, forecast)
+        # set y-axis prefixes where possible
         try:
-            components_fig = plot_components_plotly(Prophet().fit(df), forecast)
-            st.plotly_chart(components_fig, use_container_width=True)
-        except Exception as e:
-            st.warning(f"Could not generate model component plots: {e}")
-
-        st.markdown("---")
-
-        # Residual distribution histogram with anomaly highlights
-        fig_resid = go.Figure()
-        fig_resid.add_trace(go.Histogram(
-            x=residuals,
-            nbinsx=50,
-            name="Residuals",
-            marker_color='lightblue'
-        ))
-
-        anomalies = enhanced_anomaly_detection(residuals)
-        if not anomalies.empty:
-            fig_resid.add_trace(go.Scatter(
-                x=anomalies,
-                y=[0]*len(anomalies),
-                mode='markers',
-                marker=dict(color='red', size=10),
-                name='Anomalies'
-            ))
-
-        fig_resid.update_layout(
-            title="Residual Distribution with Detected Anomalies",
-            xaxis_title="Residual",
-            yaxis_title="Frequency",
-            template="plotly_white"
-        )
-        st.plotly_chart(fig_resid, use_container_width=True)
-
-        st.markdown("---")
-
-        # Residual time series plot
-        fig_resid_time = go.Figure()
-        fig_resid_time.add_trace(go.Scatter(
-            x=merged_hist['ds'],
-            y=residuals,
-            mode='lines+markers',
-            name="Residuals",
-            marker=dict(color='orange')
-        ))
-        st.plotly_chart(fig_resid_time, use_container_width=True)
-
-        st.markdown("---")
-
-        # Highlight forecasting bias
-        st.markdown("### Forecast Bias Analysis")
-        bias_txt = "Positive bias means systematic over-forecasting, negative bias means under-forecasting."
-        st.info(bias_txt)
-        st.metric("Overall Forecast Bias", f"{forecast_bias:.2%}")
+            components_fig.update_yaxes(title_text='Revenue', tickprefix='$')
+        except Exception:
+            pass
+        st.plotly_chart(components_fig, use_container_width=True)
+    except Exception as e:
+        st.info("Could not render components plot: " + str(e))
    
 # ---------------------- TAB 3: Insights & Recommendations ----------------------
 with tab3:
-    st.markdown('', unsafe_allow_html=True)
-    st.subheader("Insights & Recommendations")
+    st.markdown('<div id="insights--recommendations"></div>', unsafe_allow_html=True)
+    st.subheader("📚 Insights & Recommendations")
 
-    # Summary Revenue Growth Metrics (MoM, YoY) - in percentage
-    monthly_revenue_hist = df.set_index('ds').resample('M')['y'].sum()
-    monthly_revenue_forecast = forecast.set_index('DS').resample('M')[forecast_col].sum()
+    # compute summary KPIs (re-use values computed earlier)
+    hist_total = total_historical_revenue
+    fore_total = total_forecasted_revenue
+    change_pct = total_revenue_delta
+    hist_cagr = cagr_hist
+    fore_cagr = cagr_forecast
 
-    mom_growth_hist = monthly_revenue_hist.pct_change() * 100
-    mom_growth_forecast = monthly_revenue_forecast.pct_change() * 100
-
-    yoy_growth_hist = monthly_revenue_hist.pct_change(periods=12) * 100
-    yoy_growth_forecast = monthly_revenue_forecast.pct_change(periods=12) * 100
-
-    insights = {
-        "Latest Historical MoM Growth": mom_growth_hist.iloc[-1] if len(mom_growth_hist) > 1 else np.nan,
-        "Latest Forecasted MoM Growth": mom_growth_forecast.iloc[0] if len(mom_growth_forecast) > 0 else np.nan,
-        "Latest Historical YoY Growth": yoy_growth_hist.iloc[-1] if len(yoy_growth_hist) > 12 else np.nan,
-        "Latest Forecasted YoY Growth": yoy_growth_forecast.iloc[-1] if len(yoy_growth_forecast) > 12 else np.nan,
-    }
-    insights_df = pd.DataFrame(list(insights.items()), columns=["Metric", "Value"])
-    st.table(insights_df.style.format({"Value": "{:.2f}%"}))
-
-    # Anomaly detection summary from residuals
-    merged_hist = pd.merge(df, forecast, left_on='ds', right_on='DS')
-    residuals = merged_hist['y'] - merged_hist[forecast_col.lower()]
-    anomalies = enhanced_anomaly_detection(residuals)
-
-    if anomalies.empty:
-        st.success("No significant revenue anomalies detected.")
-    else:
-        st.warning(f"Detected {len(anomalies)} significant anomalies in historical revenue.")
-
-    # Textual Recommendations based on insights and anomalies
-    st.markdown("### Recommendations:")
-    if cagr_hist < 0:
-        st.markdown("- Historical revenue growth is negative. Consider strategies for business turnaround.")
-    else:
-        st.markdown(f"- Historical CAGR is positive at {cagr_hist:.2%}. Focus on sustaining and accelerating growth.")
-
-    if revenue_delta_pct > 0:
-        st.markdown(f"- Forecast indicates revenue increase by {revenue_delta_pct:.2f}%. Consider operational scaling.")
-    else:
-        st.markdown(f"- Forecast indicates revenue decrease by {abs(revenue_delta_pct):.2f}%. Prioritize cost control and margin management.")
-
-    if not anomalies.empty:
-        st.markdown("- Multiple revenue anomalies were detected. Conduct detailed root cause analyses for these deviations.")
-
-    # Volatility and Risk Metrics
-    residual_std = np.std(residuals)
-    st.metric("Forecast Residual Standard Deviation (Volatility)", f"{residual_std:.4f}")
-
-    rolling_vol = residuals.rolling(window=30).std()
-    fig_vol = go.Figure()
-    fig_vol.add_trace(go.Scatter(
-        x=merged_hist['ds'],
-        y=rolling_vol,
-        mode='lines',
-        name='30-day Residual Volatility'
-    ))
-    fig_vol.update_layout(
-        title="Rolling Volatility of Forecast Residuals",
-        xaxis_title="Date",
-        yaxis_title="Residual Standard Deviation",
-        template='plotly_white'
+    trend_icon = "📈" if change_pct > 0 else ("📉" if change_pct < 0 else "➡️")
+    st.markdown(f"### {trend_icon} Summary")
+    st.markdown(
+        f"- **Total Historical Revenue:** ${hist_total:,.0f}\n"
+        f"- **Total Forecasted Revenue ({forecast_months} mo):** ${fore_total:,.0f}\n"
+        f"- **Change vs Historical:** {change_pct:.2f}%\n"
+        f"- **Historical CAGR:** {hist_cagr:.2%}\n"
+        f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
-    st.plotly_chart(fig_vol, use_container_width=True)   
+
+    st.markdown("### Recommendations")
+
+    # --- Safe Computation of Inputs ---
+    try:
+        forecast_cagr_pct = float(fore_cagr) * 100.0
+    except Exception:
+        forecast_cagr_pct = 0.0
+
+    # Compute MoM Growth safely
+    mom_growth = 0.0
+    try:
+        tmp = forecast[forecast['ds'] > df['ds'].max()].copy()
+        tmp['month'] = tmp['ds'].dt.to_period('M').dt.to_timestamp()
+        if 'yhat' in tmp.columns:
+            monthly_agg = tmp.groupby('month')['yhat'].sum().reset_index()
+            monthly_agg['MoM_Growth'] = monthly_agg['yhat'].pct_change() * 100.0
+            if not monthly_agg['MoM_Growth'].dropna().empty:
+                mom_growth = float(monthly_agg['MoM_Growth'].dropna().iloc[-1])
+    except Exception:
+        mom_growth = 0.0
+
+    try:
+        volatility = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
+    except Exception:
+        volatility = 0.0
+
+    anomaly_detected_flag = False
+    try:
+        historical_comparison = pd.merge(df, forecast, on='ds', how='inner')
+        if 'yhat' in historical_comparison.columns:
+            historical_comparison['residuals'] = historical_comparison['y'] - historical_comparison['yhat']
+            std_res = historical_comparison['residuals'].std()
+            if std_res != 0:
+                historical_comparison['z_score'] = historical_comparison['residuals'] / std_res
+                anomalies_df = historical_comparison[historical_comparison['z_score'].abs() > 3]
+                anomaly_detected_flag = not anomalies_df.empty
+    except Exception:
+        anomaly_detected_flag = False
+
+    # --- Recommendation Generator ---
+    def generate_recommendation(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
+        if cagr_pct > 10:
+            trend = "strong growth"
+            action = "increase inventory and scale marketing campaigns"
+        elif cagr_pct > 0:
+            trend = "moderate growth"
+            action = "maintain steady operations with cautious optimizations"
+        else:
+            trend = "a decline"
+            action = "focus on cost optimization and strengthen customer retention"
+
+        if volatility_val > 0.2 * abs(cagr_pct):
+            risk = "However, forecasts show high volatility; plan for uncertainty and buffer inventory."
+        else:
+            risk = "The forecast appears relatively stable with low uncertainty."
+
+        anomaly_text = " Recent anomalies were detected — investigate supply chain, promotions, or data quality." if anomalies_bool else ""
+
+        return (
+            f"Revenue is projected to show {trend} with a CAGR of {cagr_pct:.2f}%. "
+            f"Recommended action: {action}. {risk}{anomaly_text}"
+        )
+
+    # --- Generate & Display ---
+    recommendation_text = generate_recommendation(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
+
+    if forecast_cagr_pct > 10:
+        st.success("Recommendation Category: Expand")
+    elif forecast_cagr_pct < -5:
+        st.error("Recommendation Category: Optimize")
+    else:
+        st.info("Recommendation Category: Maintain")
+
+    st.markdown(f"**Automated Recommendation:** {recommendation_text}")
+    st.markdown("---")
+    st.markdown("### Actionable Next Steps")
+
+    # --- Dynamic Next Steps Generator ---
+    def generate_next_steps(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
+        steps = []
+
+        # Growth actions
+        if cagr_pct > 10:
+            steps.append("📦 Align budgets and inventory planning to meet forecast peaks.")
+            steps.append("📢 Increase marketing and promotions to maximize growth momentum.")
+            steps.append("👥 Consider scaling headcount or logistics capacity.")
+        elif cagr_pct > 0:
+            steps.append("⚖️ Maintain steady operations while optimizing supply chain costs.")
+            steps.append("📊 Monitor leading indicators like customer acquisition and basket size.")
+            steps.append("⏱️ Re-run forecasts monthly to validate continued growth trajectory.")
+        else:
+            steps.append("💰 Focus on cost optimization across operations.")
+            steps.append("🔍 Deep-dive into segments or SKUs contributing to decline.")
+            steps.append("🤝 Explore customer retention campaigns to protect revenue base.")
+
+        # Volatility actions
+        if volatility_val > 0.2 * abs(cagr_pct):
+            steps.append("⚠️ Build buffer inventory and contingency plans for uncertain demand.")
+            steps.append("📉 Stress test budgets against multiple demand scenarios.")
+
+        # Anomaly actions
+        if anomalies_bool:
+            steps.append("🚨 Investigate anomalies in recent data — check for supply chain shocks, promotions, or reporting issues.")
+
+        return steps
+
+    # --- Generate and Display Next Steps ---
+    next_steps = generate_next_steps(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
+    for step in next_steps:
+        st.markdown(f"- {step}")
+
+
+    
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
 with tab4:
-    st.markdown('', unsafe_allow_html=True)
-    st.subheader("Deep Dive Analysis")
+    st.subheader("📈 Growth & Trend Insights")
 
-    # Example: Supply Chain Dips Visualized
-    st.markdown("### Supply Chain Impact Analysis")
+    # --- Revenue Momentum & Acceleration ---
+    st.markdown("#### Revenue Momentum & Acceleration")
     
-    supply_chain_events = [
-        {"date": "2023-02-15", "event": "Supply Chain Delay"},
-        {"date": "2023-06-10", "event": "Logistics Issue"},
-        {"date": "2023-11-20", "event": "Supplier Strike"}
-    ]
-    events_df = pd.DataFrame(supply_chain_events)
-    events_df['date'] = pd.to_datetime(events_df['date'])
-    
-    fig_sc = go.Figure()
-    fig_sc.add_trace(go.Scatter(
-        x=df['ds'],
-        y=df['y'],
-        mode='lines',
-        name='Historical Revenue',
-        line=dict(color='blue')
-    ))
-    for _, row in events_df.iterrows():
-        fig_sc.add_vline(x=row['date'], line_width=2, line_dash="dash", line_color="red")
-        fig_sc.add_annotation(
-            x=row['date'], y=max(df['y']),
-            text=row['event'], showarrow=True, arrowhead=1,
-            ay=-40, font=dict(color="red")
-        )
-    fig_sc.update_layout(
-        title="Revenue with Supply Chain Events",
-        xaxis_title="Date",
-        yaxis_title="Revenue",
-        template='plotly_white'
-    )
-    st.plotly_chart(fig_sc, use_container_width=True)
-
-    st.markdown("---")
-
-    # Seasonality Strength Metrics (using Prophet seasonality components)
-    try:
-        model = Prophet(weekly_seasonality=True, yearly_seasonality=True)
-        model.fit(df)
-        seasonal_components = model.predict_seasonal_components(df)
-        # Calculate strength as max-min amplitude ratio
-        weekly_strength = (seasonal_components['weekly'].max() - seasonal_components['weekly'].min()) / seasonal_components['weekly'].abs().max()
-        yearly_strength = (seasonal_components['yearly'].max() - seasonal_components['yearly'].min()) / seasonal_components['yearly'].abs().max()
-        st.metric("Weekly Seasonality Strength", f"{weekly_strength:.2%}")
-        st.metric("Yearly Seasonality Strength", f"{yearly_strength:.2%}")
-    except Exception as e:
-        st.warning(f"Could not compute seasonality strength: {e}")
-
-    st.markdown("---")
-
-    # Revenue Drawdown Analysis
-    st.markdown("### Revenue Drawdown Analysis")
-    running_max = df['y'].cummax()
-    drawdown = (df['y'] - running_max) / running_max
-    fig_dd = go.Figure()
-    fig_dd.add_trace(go.Scatter(
-        x=df['ds'],
-        y=drawdown,
-        mode='lines',
-        name='Drawdown',
-        line=dict(color='red')
-    ))
-    fig_dd.update_layout(
-        yaxis=dict(tickformat=".0%"),
-        title="Revenue Drawdowns",
-        xaxis_title="Date",
-        yaxis_title="Drawdown %",
-        template='plotly_white'
-    )
-    st.plotly_chart(fig_dd, use_container_width=True)
-
-    st.markdown("---")
-
-    # Growth Tracking & Forecast Accuracy
-    st.markdown("### Growth Tracking vs Forecast Accuracy")
-
-    growth_diff = (forecast_df[forecast_col] - df.set_index('ds')['y']).dropna()
-    avg_growth_diff = growth_diff.mean()
-
-    st.metric("Average Growth Difference (Forecast vs Actual)", f"{avg_growth_diff:.2f}")
-
-    fig_growth = go.Figure()
-    fig_growth.add_trace(go.Scatter(
-        x=forecast_df['DS'],
-        y=forecast_df[forecast_col],
-        mode='lines',
-        name='Forecast'
-    ))
-    fig_growth.add_trace(go.Scatter(
-        x=df['ds'],
-        y=df['y'],
-        mode='lines',
-        name='Actual'
-    ))
-    fig_growth.update_layout(
-        title="Forecast vs Actual Revenue",
-        xaxis_title="Date",
-        yaxis_title="Revenue",
-        template='plotly_white'
-    )
-    st.plotly_chart(fig_growth, use_container_width=True)
-
-    st.markdown("---")
-
-    # Automated Actionable Recommendations
-    st.markdown("### Automated Actionable Recommendations")
-
-    if revenue_delta_pct > 5:
-        st.markdown("- Forecast indicates strong revenue growth. Consider planned scaling of production capacity.")
-    elif revenue_delta_pct < -5:
-        st.markdown("- Revenue decline ahead, assess and reduce operational expenses immediately.")
+    # Calculate 7-day growth (based on last value vs previous value)
+    if len(df) > 7:
+        growth_7d = df['y'].tail(7).pct_change().iloc[-1] * 100
     else:
-        st.markdown("- Revenue expected to stay steady. Focus on maintaining customer satisfaction and operational efficiency.")
+        growth_7d = 0.0
+    
+    # Calculate 30-day growth (based on last 30 days vs previous 30 days)
+    if len(df) > 31:
+        prev_30 = df['y'].iloc[-61:-31].sum()  # previous 30-day window
+        curr_30 = df['y'].tail(30).sum()
+        growth_30d = ((curr_30 / prev_30) - 1) * 100 if prev_30 > 0 else 0.0
+    else:
+        growth_30d = 0.0
+    
+    # Calculate 90-day growth (based on last 90 days vs previous 90 days)
+    if len(df) > 181:
+        prev_90 = df['y'].iloc[-181:-91].sum()  # previous 90-day window
+        curr_90 = df['y'].tail(90).sum()
+        growth_90d = ((curr_90 / prev_90) - 1) * 100 if prev_90 > 0 else 0.0
+    else:
+        growth_90d = 0.0
+    
+    # Display KPIs
+    col_mom1, col_mom2, col_mom3 = st.columns(3)
+    
+    with col_mom1:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 7-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_7d > 0 else 'red'};">
+                    {growth_7d:,.2f}%
+                </p>
+                <p class="kpi-subtitle">Revenue change over the last 7 days.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with col_mom2:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 30-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_30d > 0 else 'red'};">
+                    {growth_30d:,.2f}%
+                </p>
+                <p class="kpi-subtitle">Revenue change by comparing the last 30 days to the prior 30 days.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    with col_mom3:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Latest 90-Day Growth</p>
+                <p class="kpi-value" style="color:{'green' if growth_90d > 0 else 'red'};">
+                    {growth_90d:,.2f}%
+                </p>
+                <p class="kpi-subtitle">Revenue change by comparing the last 90 days to the prior 90 days.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    
+
+    # --- Revenue Recovery Analysis ---
+    st.markdown("#### Revenue Recovery Analysis")
+    supply_chain_dip_date = pd.to_datetime('2023-11-20')
+    if supply_chain_dip_date in df['ds'].values:
+        dip_start_date = df[df['ds'] == supply_chain_dip_date].iloc[0].ds
+        dip_revenue = df[df['ds'] == dip_start_date].iloc[0]['y']
+        
+        pre_dip_avg = df[(df['ds'] < dip_start_date) & (df['ds'] > dip_start_date - pd.Timedelta(days=30))]['y'].mean()
+        
+        recovery_df = df[df['ds'] > dip_start_date].copy()
+        
+        recovery_period = recovery_df[recovery_df['y'] >= pre_dip_avg]
+        if not recovery_period.empty:
+            recovery_date = recovery_period.iloc[0].ds
+            days_to_recover = (recovery_date - dip_start_date).days
+            st.info(f"The **'Supply Chain Dip'** on {dip_start_date.strftime('%Y-%m-%d')} caused a drop in revenue. It took approximately **{days_to_recover} days** to recover to the pre-dip average.")
+        else:
+            st.info("The model could not identify a full recovery from the 'Supply Chain Dip' yet.")
+    
+    st.markdown("---")
+    
+    # --- Seasonality & Pattern Insights ---
+    st.subheader("📊 Seasonality & Pattern Insights")
+    df['day_of_week'] = df['ds'].dt.day_name()
+    df['month_of_year'] = df['ds'].dt.month_name()
+    
+    avg_by_day = df.groupby('day_of_week')['y'].mean().reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    avg_by_month = df.groupby('month_of_year')['y'].mean().reindex(pd.to_datetime(range(1, 13), format='%m').month_name())
+    
+    col_season1, col_season2 = st.columns(2)
+    with col_season1:
+        fig_day = go.Figure(data=[go.Bar(x=avg_by_day.index, y=avg_by_day.values, marker_color='#0b6ef6')])
+        fig_day.update_layout(title="Average Revenue by Day of Week", yaxis_title="Average Revenue ($)", xaxis_title="")
+        st.plotly_chart(fig_day, use_container_width=True)
+    
+    with col_season2:
+        fig_month = go.Figure(data=[go.Bar(x=avg_by_month.index, y=avg_by_month.values, marker_color='#1f9d55')])
+        fig_month.update_layout(title="Average Revenue by Month of Year", yaxis_title="Average Revenue ($)", xaxis_title="")
+        st.plotly_chart(fig_month, use_container_width=True)
+        
+    st.markdown("---")
+    
+    # --- Seasonal Strength Index ---
+    st.markdown("#### Seasonal Strength Index")
+    model_components = forecast[['trend', 'yearly', 'weekly']]
+    model_residuals = df['y'] - forecast['yhat'].iloc[:len(df)]
+    
+    trend_variance = model_components['trend'].var()
+    seasonal_variance = model_components[['yearly', 'weekly']].var().sum()
+    noise_variance = model_residuals.var()
+    
+    total_variance = trend_variance + seasonal_variance + noise_variance
+    
+    trend_pct = (trend_variance / total_variance) * 100
+    seasonal_pct = (seasonal_variance / total_variance) * 100
+    noise_pct = (noise_variance / total_variance) * 100
+    
+    seasonal_strength_index = (seasonal_variance / (seasonal_variance + trend_variance)) * 100 if (seasonal_variance + trend_variance) > 0 else 0
+    
+    col_ss1, col_ss2 = st.columns(2)
+    with col_ss1:
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Seasonal Strength Index</p>
+                <p class="kpi-value">{seasonal_strength_index:.2f}%</p>
+                <p class="kpi-subtitle">Variability explained by seasonality</p>
+            </div>
+            """, unsafe_allow_html=True)
+    with col_ss2:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Holiday Impact</p>
+            <p class="kpi-value">${df[df['ds'].isin(holidays_df['ds'])]['y'].mean():,.2f}</p>
+            <p class="kpi-subtitle">Average holiday revenue</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.markdown(f"**Insight:** The model suggests that **{seasonal_pct:.2f}%** of the observed revenue variability is explained by predictable seasonal patterns, while **{trend_pct:.2f}%** is explained by the long-term trend, and the remaining **{noise_pct:.2f}%** is random noise.")
+    st.markdown("---")
+    
+    # --- Risk & Volatility Insights ---
+    st.subheader("📉 Risk & Volatility Insights")
+    df['rolling_std'] = df['y'].rolling(window=30, min_periods=1).std()
+    df['rolling_mean'] = df['y'].rolling(window=30, min_periods=1).mean()
+    df['volatility_index'] = df['rolling_std'] / df['rolling_mean']
+    
+    fig_volatility = go.Figure(data=[go.Scatter(x=df['ds'], y=df['volatility_index'], mode='lines', name='Revenue Volatility Index', line=dict(color='#d45a5a'))])
+    fig_volatility.update_layout(title="Revenue Volatility Index (30-day Rolling)", yaxis_title="Index", xaxis_title="Date", template="plotly_white")
+    st.plotly_chart(fig_volatility, use_container_width=True)
+    
+    # Revenue Drawdowns
+    df['cumulative_max'] = df['y'].cummax()
+    df['drawdown'] = (df['y'] - df['cumulative_max']) / df['cumulative_max'] * 100
+    max_drawdown = df['drawdown'].min()
+    
+    fig_drawdown = go.Figure(data=[go.Scatter(x=df['ds'], y=df['drawdown'], mode='lines', name='Revenue Drawdown', line=dict(color='orange'))])
+    fig_drawdown.update_layout(title="Revenue Drawdown from Peak (%)", yaxis_title="Drawdown (%)", xaxis_title="Date", template="plotly_white")
+    st.plotly_chart(fig_drawdown, use_container_width=True)
+    st.info(f"The largest revenue drawdown was **{max_drawdown:.2f}%**, indicating the maximum peak-to-trough decline experienced in the historical data.")
+    
+    st.markdown("---")
+    
+    # Anomaly Detection
+    historical_comparison['residuals'] = historical_comparison['y'] - historical_comparison['yhat']
+    residuals_std = historical_comparison['residuals'].std()
+    historical_comparison['z_score'] = historical_comparison['residuals'] / residuals_std
+    anomalies = historical_comparison[abs(historical_comparison['z_score']) > 3] # Flagging anything > 3 std deviations
+    
+    if not anomalies.empty:
+        st.markdown("#### Anomaly Detection")
+        fig_anomalies = go.Figure()
+        fig_anomalies.add_trace(go.Scatter(x=df['ds'], y=df['y'], mode='lines', name='Historical Revenue', line=dict(color='#0b6ef6')))
+        fig_anomalies.add_trace(go.Scatter(x=anomalies['ds'], y=anomalies['y'], mode='markers', name='Anomalies', marker=dict(color='red', size=8)))
+        fig_anomalies.update_layout(title="Historical Revenue with Detected Anomalies", yaxis_title="Revenue ($)")
+        st.plotly_chart(fig_anomalies, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # --- Financial KPI Insights ---
+    st.subheader("🧾 Financial KPI Insights")
+    
+    col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+    with col_kpi1:
+        # Revenue Run-Rate
+        last_90_days_avg_revenue = df['y'].tail(90).mean()
+        annual_run_rate = last_90_days_avg_revenue * 365
+        st.markdown(
+            f"""
+            <div class="kpi-container">
+                <p class="kpi-title">Annual Run-Rate (ARR)</p>
+                <p class="kpi-value">${annual_run_rate/1000000:,.2f}M</p>
+                <p class="kpi-subtitle">Based on last 90 days</p>
+            </div>
+            """, unsafe_allow_html=True
+        )
+    
+    with col_kpi2:
+        # Growth Target Tracking
+        st.markdown("<p class='kpi-title'>Growth Target Tracking</p>", unsafe_allow_html=True)
+        growth_target_pct = st.number_input("Annual Growth Target (%)", value=15.0, step=1.0, format="%.1f")
+        latest_yoy_growth = df['y'].iloc[-365:].sum() / df['y'].iloc[-730:-365].sum() - 1 if len(df) > 730 else 0
+        
+        target_status = "On Track" if latest_yoy_growth * 100 >= growth_target_pct else "Off Target"
+        status_color = "#1f9d55" if target_status == "On Track" else "#d45a5a"
+        
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Actual YoY Growth</p>
+            <p class="kpi-value" style="color:{status_color};">{latest_yoy_growth*100:,.2f}%</p>
+            <p class="kpi-subtitle">Target: {growth_target_pct:.1f}% ({target_status})</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_kpi3:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Revenue Milestones</p>
+            <ul>
+                <li>$1M: {df[df['y'].cumsum() >= 1000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 1000000].empty else "Not yet reached"}</li>
+                <li>$5M: {df[df['y'].cumsum() >= 5000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 5000000].empty else "Not yet reached"}</li>
+                <li>$10M: {df[df['y'].cumsum() >= 10000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 10000000].empty else "Not yet reached"}</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
