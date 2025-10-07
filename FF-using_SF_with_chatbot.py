@@ -11,6 +11,8 @@ from datetime import datetime
 import snowflake.connector
 import requests 
 import json
+from google import genai
+from google.genai.errors import APIError
 
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
@@ -275,6 +277,17 @@ try:
     conn.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
+# --- Data Preparation for Gemini Prompt ---
+    # Use the combined historical + forecast data for comprehensive analysis
+    # We only want the relevant columns for the prompt analysis: ds, y, yhat, yhat_lower, yhat_upper
+    forecast_analysis_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).copy()
+    # Merge historical data for context
+    historical_context_df = df[['ds', 'y']].rename(columns={'y': 'yhat'})
+    # Combine the historical and forecasted data for LLM context
+    llm_data_df = pd.concat([historical_context_df, forecast_analysis_df]).tail(365 + forecast_period_days) # Last year + forecast
+    
+    # Convert the combined DataFrame to a Markdown table string
+    data_for_prompt = llm_data_df.to_markdown(index=False)
 
 # Choose forecast column
 if what_if_enabled:
@@ -933,74 +946,65 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-    # ---------------------- HELPER: Use Hugging Face Free API for Recommendations --------------------
-    def get_recommendations(prompt: str):
-        """
-        Generates structured recommendations using the free 'google/flan-t5-large' model on Hugging Face.
-        """
-        try:
-            token = st.secrets["huggingface"]["api_token"]
-        except Exception:
-            return "🚨 Missing Hugging Face API token in Streamlit secrets."
-    
-        headers = {"Authorization": f"Bearer {token}"}
-        data = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 300,
-                "temperature": 0.7,
-                "return_full_text": False
-            }
-        }
-    
-        try:
-            with st.spinner("🧠 Generating recommendations using Flan-T5-Large (free model)..."):
-                response = requests.post(
-                    "https://api-inference.huggingface.co/models/google/flan-t5-large",
-                    headers=headers,
-                    json=data,
-                    timeout=60
-                )
-                response.raise_for_status()
-                output = response.json()
-    
-                if isinstance(output, list) and "generated_text" in output[0]:
-                    return output[0]["generated_text"].strip()
-                else:
-                    st.warning("⚠️ Unexpected API response format.")
-                    st.code(json.dumps(output, indent=2))
-                    return None
-    
-        except requests.exceptions.RequestException as e:
-            st.error(f"❌ Hugging Face API error: {e}")
-            return None
-
-
-        
-# --- LLM-GENERATED RECOMMENDATIONS ---
+        # [ ... Existing KPI summary code here ... ]
 
     st.divider()
-    st.header("🎯 LLM-Generated Recommendations & Action Items")
+    st.header("🎯 LLM-Generated Recommendations")
     
-    with st.spinner("🧠 Analyzing forecast data and generating insights..."):
-        recommendation_prompt = (
-            "Using the data recently inserted into 'FINANCIAL_FORECAST_OUTPUT', "
-            "analyze revenue trends and forecast results. "
-            "Generate 3 specific, actionable business recommendations and next steps. "
-            "Each recommendation must have these sections:\n\n"
-            "### Recommendation\n"
-            "### Rationale\n"
-            "### Action Items\n\n"
-            "Focus the analysis on peak revenue periods, growth patterns, and improvement opportunities."
-        )
+    # 1. Define the new, data-injected prompt
+    # The 'data_for_prompt' variable is created in Step 2.
+    recommendation_prompt = (
+        "Analyze the following financial time-series data provided in the Markdown table format:\n\n"
+        f"---DATA---\n{data_for_prompt}\n---END DATA---\n\n" # <-- Data Injection
+        "The columns are: 'ds' (Date), 'yhat' (Predicted Revenue/Historical Revenue), 'yhat_lower', and 'yhat_upper'. "
+        "Based *only* on the data above, analyze revenue trends, identify peak periods, and comment on the 'yhat_lower' vs 'yhat_upper' bounds. "
+        "Generate 3 specific, actionable business recommendations and next steps. "
+        "Each recommendation must strictly follow this structure:\n\n"
+        "### Recommendation\n"
+        "### Rationale\n"
+        "### Action Items\n\n"
+        "Ensure the entire response contains only the 3 structured recommendations and nothing else."
+    )
+
+    # 2. Use the Gemini SDK to generate content
+    try:
+        # Load API key from Streamlit secrets
+        api_key = st.secrets["gemini"]["api_key"]
+    except AttributeError:
+        st.error("🚨 Missing Gemini API key in Streamlit secrets under [gemini] api_key.")
+        st.stop()
+        
+    try:
+        with st.spinner("🧠 Analyzing forecast data and generating recommendations with Gemini 2.5 Flash..."):
+            
+            # Initialize the Gemini Client
+            client = genai.Client(api_key=api_key)
+            
+            # Configuration for the API call
+            config = {
+                "max_output_tokens": 1024, 
+                "temperature": 0.7,
+            }
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash", # Use a fast, capable model for analysis
+                contents=recommendation_prompt,
+                config=config,
+            )
+
+            llm_summary = response.text
     
-        llm_response = get_recommendations(recommendation_prompt)
-    
-        if llm_response and not llm_response.startswith("❌"):
-            st.success("✅ Recommendations & Action Items Generated Successfully")
-            st.markdown(llm_response)
-        else:
-            st.error(llm_response or "❌ No recommendations generated. Please check API connectivity.")
+            if llm_summary:
+                st.success("✅ Recommendations Generated by Gemini 2.5 Flash")
+                # Render the LLM's structured text
+                st.markdown(llm_summary)
+            else:
+                st.warning("⚠️ Gemini API returned an empty response.")
+                
+    except APIError as e:
+        st.error(f"❌ Gemini API Error (Check API Key/Rate Limits): {e}")
+    except Exception as e:
+        st.error(f"❌ An unexpected error occurred: {e}")
 
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
