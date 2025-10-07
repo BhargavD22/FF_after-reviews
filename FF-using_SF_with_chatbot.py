@@ -251,8 +251,8 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
     # Prepare DataFrame with uppercase column names for Snowflake
-    forecast_for_sf = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper', 'yhat_what_if']].copy()
-    forecast_for_sf.columns = ['DS', 'YHAT', 'YHAT_LOWER', 'YHAT_UPPER', 'YHAT_WHAT_IF']
+    forecast_for_sf = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
+    forecast_for_sf.columns = ['DS', 'YHAT', 'YHAT_LOWER', 'YHAT_UPPER']
 
     # Clear previous run
     cur.execute("TRUNCATE TABLE financial_forecast_output")
