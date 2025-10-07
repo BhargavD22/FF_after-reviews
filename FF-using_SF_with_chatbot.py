@@ -934,8 +934,7 @@ with tab3:
     )
 
     # ---------------------- HELPER: Use Hugging Face Free API for Recommendations --------------------
-
-        def get_recommendations(prompt: str):
+    def get_recommendations(prompt: str):
             """
             Generates business recommendations using the free Falcon-7B-Instruct model on Hugging Face.
             """
@@ -977,6 +976,7 @@ with tab3:
                 return None
 
 
+        
 # --- LLM-GENERATED RECOMMENDATIONS ---
 
     st.divider()
