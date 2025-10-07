@@ -934,47 +934,55 @@ with tab3:
     )
 
     # ---------------------- HELPER: Robust LLM Recommendation Function ----------------------
+    # ---------------------- HELPER: Proxy-only LLM Recommendation Function (stable) ----------------------
     def get_recommendations(prompt: str):
-        """Tries MIRAGPT API first; falls back to Cloud Run proxy if primary fails."""
-        from datetime import datetime
-        import requests, json, streamlit as st
-        
-        session_id = f"st_app_query_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-        
-        # ---- Load secrets safely ----
-        try:
-            url_base = st.secrets.miragpt.url_base
-            access_key = st.secrets.miragpt.access_key
-        except AttributeError:
-            return "🚨 Missing MIRAGPT configuration in Streamlit secrets. Please update `.streamlit/secrets.toml`."
-    
-        headers = {"access-key": access_key, "Content-Type": "application/json"}
-        payload = json.dumps({"title": prompt})
-        
-        # ---- 1️⃣ Try Primary API ----
-        try:
-            response = requests.post(f"{url_base}?sessionId={session_id}", headers=headers, data=payload, timeout=30)
+    """Uses the Cloud Run proxy directly to generate recommendations and action items."""
+    import requests, json, streamlit as st
+    from datetime import datetime
+
+    session_id = f"st_app_query_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+    payload = json.dumps({"title": prompt})
+    proxy_url = "https://mira-proxy-582396939090.us-central1.run.app"
+
+    try:
+        with st.spinner("🧠 Contacting AI service via Cloud Run proxy..."):
+            response = requests.post(
+                proxy_url,
+                headers={"Content-Type": "application/json"},
+                data=payload,
+                timeout=60  # increased timeout
+            )
             response.raise_for_status()
             data = response.json()
-            summary = data.get('response', {}).get('summarized') or data.get('response', {}).get('summerized')
-            if summary:
-                return summary
-        except Exception as e:
-            st.warning(f"⚠️ Primary MIRAGPT API failed ({e}). Retrying via Cloud Run proxy...")
-    
-        # ---- 2️⃣ Fallback to Cloud Run Proxy ----
-        try:
-            proxy_url = "https://mira-proxy-582396939090.us-central1.run.app"
-            response = requests.post(proxy_url, headers={"Content-Type": "application/json"}, data=payload, timeout=30)
-            response.raise_for_status()
-            data = response.json()
-            summary = data.get('response', {}).get('summarized') or data.get('response', {}).get('summerized')
+
+            # check fields
+            if not isinstance(data, dict):
+                st.warning("⚠️ Unexpected response format (not JSON).")
+                st.code(response.text)
+                return None
+
+            summary = (
+                data.get("response", {}).get("summarized")
+                or data.get("response", {}).get("summerized")
+                or data.get("response", {}).get("summary")
+            )
+
             if summary:
                 return summary
             else:
-                return "⚠️ Proxy returned no structured recommendations. Try again later."
-        except Exception as e:
-            return f"❌ Both MIRAGPT and proxy failed. Error: {e}"
+                st.warning("⚠️ Proxy returned no recommendations.")
+                st.code(json.dumps(data, indent=2))
+                return None
+
+    except requests.exceptions.Timeout:
+        st.error("❌ The proxy took too long to respond (timeout after 60s).")
+        return None
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Network error when calling proxy: {e}")
+        return None
+    except Exception as e:
+        st.error(f"❌ Unexpected error: {e}")
+        return None
 
 # --- LLM-GENERATED RECOMMENDATIONS ---
 
