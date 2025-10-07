@@ -1321,7 +1321,7 @@ overlay_html = """
     + '</div>';
 
   // 👇 CHANGE #1: point to your Cloud Run proxy URL (no access key here)
-  var API_URL = "https://mira-proxy-582396939090.us-central1.run.app";
+  var API_URL = "https://miragpt-ks-uat.azurewebsites.net/ds/api/connection/17C97EA1-DC18-4D8A-94DD-49333F5590FE/query";
 
   var modal  = shadow.getElementById("miraModal");
   var toggle = shadow.getElementById("miraToggle");
