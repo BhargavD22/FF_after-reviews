@@ -933,56 +933,52 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-    # ---------------------- HELPER: Robust LLM Recommendation Function ----------------------
-    # ---------------------- HELPER: Proxy-only LLM Recommendation Function (stable) ----------------------
+    # ---------------------- HELPER: Use Hugging Face Free API for Recommendations ----------------------
+import requests, json, streamlit as st
+
     def get_recommendations(prompt: str):
-        """Uses the Cloud Run proxy directly to generate recommendations and action items."""
-        import requests, json, streamlit as st
-        from datetime import datetime
+        """
+        Generates business recommendations using Hugging Face's free Mistral-7B model.
+        Returns nicely formatted markdown or debug info if API fails.
+        """
+        try:
+            token = st.secrets["huggingface"]["api_token"]
+        except Exception:
+            return "🚨 Missing Hugging Face API token in Streamlit secrets."
     
-        session_id = f"st_app_query_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-        payload = json.dumps({"title": prompt})
-        proxy_url = "https://mira-proxy-582396939090.us-central1.run.app"
+        headers = {"Authorization": f"Bearer {token}"}
+        data = {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": 500,
+                "temperature": 0.7,
+                "return_full_text": False
+            }
+        }
     
         try:
-            with st.spinner("🧠 Contacting AI service via Cloud Run proxy..."):
+            with st.spinner("🧠 Generating recommendations using Hugging Face model..."):
                 response = requests.post(
-                    proxy_url,
-                    headers={"Content-Type": "application/json"},
-                    data=payload,
-                    timeout=60  # increased timeout
+                    "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+                    headers=headers,
+                    json=data,
+                    timeout=90
                 )
                 response.raise_for_status()
-                data = response.json()
+                output = response.json()
     
-                # check fields
-                if not isinstance(data, dict):
-                    st.warning("⚠️ Unexpected response format (not JSON).")
-                    st.code(response.text)
-                    return None
-    
-                summary = (
-                    data.get("response", {}).get("summarized")
-                    or data.get("response", {}).get("summerized")
-                    or data.get("response", {}).get("summary")
-                )
-    
-                if summary:
-                    return summary
+                # Typical output: [{'generated_text': '...'}]
+                if isinstance(output, list) and "generated_text" in output[0]:
+                    return output[0]["generated_text"].strip()
                 else:
-                    st.warning("⚠️ Proxy returned no recommendations.")
-                    st.code(json.dumps(data, indent=2))
+                    st.warning("⚠️ Unexpected API response format.")
+                    st.code(json.dumps(output, indent=2))
                     return None
     
-        except requests.exceptions.Timeout:
-            st.error("❌ The proxy took too long to respond (timeout after 60s).")
-            return None
         except requests.exceptions.RequestException as e:
-            st.error(f"❌ Network error when calling proxy: {e}")
+            st.error(f"❌ Hugging Face API error: {e}")
             return None
-        except Exception as e:
-            st.error(f"❌ Unexpected error: {e}")
-            return None
+
 
 # --- LLM-GENERATED RECOMMENDATIONS ---
 
