@@ -933,47 +933,51 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-# --- LLM-GENERATED RECOMMENDATIONS (REPLACEMENT BLOCK) ---
-
+# --- LLM-GENERATED RECOMMENDATIONS  ---
+# Accessing secrets
     try:
-        MIRAGPT_URL = st.secrets.miragpt.url
+        MIRAGPT_URL_BASE = st.secrets.miragpt.url_base
         MIRAGPT_ACCESS_KEY = st.secrets.miragpt.access_key
+        # 🟢 Get the static part of the required session ID
+        MIRAGPT_STATIC_SESSION_ID = st.secrets.miragpt.static_session_id
     except AttributeError:
         st.error("🚨 Missing API configuration in Streamlit Secrets. Please check your `.streamlit/secrets.toml`.")
         st.stop() # Stop the app if credentials are not found
-
-
+    
+    # 🟢 Construct the FINAL required session ID, combining the static and dynamic parts
+    # This uses the required static ID plus a dynamic timestamp for unique tracking
+    final_session_id = f"{MIRAGPT_STATIC_SESSION_ID}**-dynamic-**{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    
+    
     st.divider()
     st.header("🎯 LLM-Generated Recommendations")
     
-    # Use a spinner while waiting for the LLM response
     with st.spinner("🧠 Analyzing forecast data from Snowflake and generating recommendations..."):
         
-        # The analytical prompt instructs the LLM to use the data in the FINANCIAL_FORECAST_OUTPUT table
         recommendation_prompt = "Using the data just inserted into the 'FINANCIAL_FORECAST_OUTPUT' table, generate three specific, actionable business recommendations and next steps. Structure the output clearly with headings for Recommendation, Rationale, and Next Steps. Focus the analysis on the three peak revenue periods."
         
-        # Prepare the API request payload
         payload = json.dumps({
           "title": recommendation_prompt
         })
         
         headers = {
-          'access-key': MIRAGPT_ACCESS_KEY,  # Secret is used here
+          'access-key': MIRAGPT_ACCESS_KEY,
           'Content-Type': 'application/json'
         }
         
         # Make the API call
         try:
-            # Use a unique sessionId (e.g., based on timestamp) for tracing if needed
+            # 🟢 CRITICAL FIX: Use MIRAGPT_URL_BASE (without query params) and correctly append
+            # the combined session ID using a single question mark (?).
             response = requests.post(
-                f"{MIRAGPT_URL}?sessionId=st_app_session_{datetime.now().strftime('%Y%m%d%H%M%S')}", # Secret is used here
+                f"{MIRAGPT_URL_BASE}?sessionId={final_session_id}",
                 headers=headers,
                 data=payload,
-                timeout=30 # Add a timeout in case the LLM is slow
+                timeout=30
             )
-            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
-            
-            data = response.json()
+            response.raise_for_status()
+                
+                data = response.json()
             
             # Extract and render the LLM's response
             llm_summary = data.get('response', {}).get('summarized') or data.get('response', {}).get('summerized')
