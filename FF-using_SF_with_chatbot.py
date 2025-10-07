@@ -281,7 +281,7 @@ except Exception as e:
 # ---------------------------------------------------------------------
 # --- Data Preparation for Gemini Prompt (Summary Creation based on KPIs)
 # ---------------------------------------------------------------------
-
+global summary_for_prompt
 try:
     
     # Ensure data is ready and clean
@@ -325,7 +325,6 @@ Financial Data Summary:
 """ 
 except Exception as e:
     # If the summary fails to generate, use a safe default string
-    global summary_for_prompt
     summary_for_prompt = f"Failed to generate summary metrics due to calculation error: {e}. Cannot perform LLM analysis."
 
 # ---------------------------------------------------------------------
