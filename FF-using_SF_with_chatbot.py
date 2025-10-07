@@ -252,23 +252,27 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
 try:
     # Prepare DataFrame with uppercase column names for Snowflake
     forecast_for_sf = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
+    
+    # CRITICAL FIX: Convert the 'ds' (Date) column to Python's native date object.
+    # This resolves the nanosecond casting error (100071).
+    forecast_for_sf['ds'] = forecast_for_sf['ds'].dt.date
+    
+    # Rename columns to uppercase (DS, YHAT, etc.) for case-sensitivity with Snowflake
     forecast_for_sf.columns = ['DS', 'YHAT', 'YHAT_LOWER', 'YHAT_UPPER']
-
+    
     # Clear previous run
     cur.execute("TRUNCATE TABLE financial_forecast_output")
     conn.commit()
 
     from snowflake.connector.pandas_tools import write_pandas
     
-    # Write the prepared DataFrame with uppercase column headers
+    # Write the prepared DataFrame
     write_pandas(conn, forecast_for_sf, "FINANCIAL_FORECAST_OUTPUT")
     
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
     conn.close()
 except Exception as e:
-    # Ensure connection is closed even on error if possible, but keep original error handling
     st.sidebar.error(f"❌ Error saving forecast: {e}")
-
 
 # Choose forecast column
 if what_if_enabled:
