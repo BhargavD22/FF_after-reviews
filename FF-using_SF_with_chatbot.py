@@ -1030,7 +1030,7 @@ with tab3:
         with st.spinner("🧠 Analyzing KPIs and generating recommendations with **Gemini 2.5 Flash** (JSON Mode)..."):
             
             # Initialize the Gemini Client
-            client = genai.Client(api_key=api_key)
+            client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
             
             # 3. FINAL RELIABILITY CONFIGURATION: Use JSON Schema
             config = {
