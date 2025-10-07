@@ -283,6 +283,7 @@ except Exception as e:
 # ---------------------------------------------------------------------
 
 try:
+    global summary_for_prompt
     # Ensure data is ready and clean
     df_hist = df.copy()
     df_hist['ds'] = pd.to_datetime(df_hist['ds'])
@@ -321,9 +322,7 @@ Financial Data Summary:
 - Total Forecasted Revenue (Period Sum): ${forecast_revenue:,.2f}
 - Peak Forecast Revenue Date: {peak_revenue_date} (Value: ${peak_revenue_value:,.2f})
 - Average Confidence Interval Spread (Percentage of Mean Forecast): {avg_confidence_spread_pct:.2f}%
-"""
-    # CRITICAL FIX: Ensures variable is accessible in tab3
-    global summary_for_prompt
+""" 
 except Exception as e:
     # If the summary fails to generate, use a safe default string
     global summary_for_prompt
