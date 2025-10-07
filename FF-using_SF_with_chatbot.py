@@ -978,28 +978,28 @@ def get_recommendations(prompt: str):
 
 # --- LLM-GENERATED RECOMMENDATIONS ---
 
-   st.divider()
-st.header("🎯 LLM-Generated Recommendations & Action Items")
-
-with st.spinner("🧠 Analyzing forecast data and generating insights..."):
-    recommendation_prompt = (
-        "Using the data recently inserted into 'FINANCIAL_FORECAST_OUTPUT', "
-        "analyze revenue trends and forecast results. "
-        "Generate 3 specific, actionable business recommendations and next steps. "
-        "Each recommendation must have these sections:\n\n"
-        "### Recommendation\n"
-        "### Rationale\n"
-        "### Action Items\n\n"
-        "Focus the analysis on peak revenue periods, growth patterns, and improvement opportunities."
-    )
-
-    llm_response = get_recommendations(recommendation_prompt)
-
-    if llm_response and not llm_response.startswith("❌"):
-        st.success("✅ Recommendations & Action Items Generated Successfully")
-        st.markdown(llm_response)
-    else:
-        st.error(llm_response or "❌ No recommendations generated. Please check API connectivity.")
+    st.divider()
+    st.header("🎯 LLM-Generated Recommendations & Action Items")
+    
+    with st.spinner("🧠 Analyzing forecast data and generating insights..."):
+        recommendation_prompt = (
+            "Using the data recently inserted into 'FINANCIAL_FORECAST_OUTPUT', "
+            "analyze revenue trends and forecast results. "
+            "Generate 3 specific, actionable business recommendations and next steps. "
+            "Each recommendation must have these sections:\n\n"
+            "### Recommendation\n"
+            "### Rationale\n"
+            "### Action Items\n\n"
+            "Focus the analysis on peak revenue periods, growth patterns, and improvement opportunities."
+        )
+    
+        llm_response = get_recommendations(recommendation_prompt)
+    
+        if llm_response and not llm_response.startswith("❌"):
+            st.success("✅ Recommendations & Action Items Generated Successfully")
+            st.markdown(llm_response)
+        else:
+            st.error(llm_response or "❌ No recommendations generated. Please check API connectivity.")
 
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
