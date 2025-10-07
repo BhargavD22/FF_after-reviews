@@ -9,6 +9,8 @@ import os
 import streamlit.components.v1 as components
 from datetime import datetime
 import snowflake.connector
+import requests 
+import json
 
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
