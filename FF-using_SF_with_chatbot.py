@@ -197,7 +197,6 @@ try:
             yhat FLOAT,
             yhat_lower FLOAT,
             yhat_upper FLOAT,
-            yhat_what_if FLOAT,
             run_timestamp TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
         )
     """)
@@ -215,7 +214,7 @@ try:
     df['ds'] = pd.to_datetime(df['ds'])
     df['y'] = pd.to_numeric(df['y'])
     forecast_df = pd.read_sql(
-        "SELECT ds, yhat, yhat_lower, yhat_upper, yhat_what_if FROM financial_forecast_output ORDER BY ds",
+        "SELECT ds, yhat, yhat_lower, yhat_upper FROM financial_forecast_output ORDER BY ds",
         conn)
     forecast_df['ds'] = pd.to_datetime(forecast_df['DS'])
     #conn.close()
@@ -256,7 +255,7 @@ try:
     conn.commit()
     
     from snowflake.connector.pandas_tools import write_pandas
-    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper','yhat_what_if']], "FINANCIAL_FORECAST_OUTPUT")
+    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper']], "FINANCIAL_FORECAST_OUTPUT")
     #write_pandas(conn, forecast[['DS','YHAT','YHAT_LOWER','YHAT_UPPER','YHAT_WHAT_IF']], "FINANCIAL_FORECAST_OUTPUT")
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
     conn.close()
