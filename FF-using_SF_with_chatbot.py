@@ -959,7 +959,7 @@ with tab3:
         recommendation_prompt = "Using the data just inserted into the 'FINANCIAL_FORECAST_OUTPUT' table, generate three specific, actionable business recommendations and next steps. Structure the output clearly with headings for Recommendation, Rationale, and Next Steps. Focus the analysis on the three peak revenue periods."
         
         payload = json.dumps({
-          "title": recommendation_prompt
+          "prompt": recommendation_prompt
         })
         
         headers = {
