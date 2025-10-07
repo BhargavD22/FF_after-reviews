@@ -250,16 +250,23 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
+    # Prepare DataFrame with uppercase column names for Snowflake
+    forecast_for_sf = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper', 'yhat_what_if']].copy()
+    forecast_for_sf.columns = ['DS', 'YHAT', 'YHAT_LOWER', 'YHAT_UPPER', 'YHAT_WHAT_IF']
+
     # Clear previous run
-    #cur.execute("TRUNCATE TABLE financial_forecast_output")
-    #conn.commit()
-    
+    cur.execute("TRUNCATE TABLE financial_forecast_output")
+    conn.commit()
+
     from snowflake.connector.pandas_tools import write_pandas
-    write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper']], "FINANCIAL_FORECAST_OUTPUT")
-    #write_pandas(conn, forecast[['DS','YHAT','YHAT_LOWER','YHAT_UPPER','YHAT_WHAT_IF']], "FINANCIAL_FORECAST_OUTPUT")
+    
+    # Write the prepared DataFrame with uppercase column headers
+    write_pandas(conn, forecast_for_sf, "FINANCIAL_FORECAST_OUTPUT")
+    
     st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
     conn.close()
 except Exception as e:
+    # Ensure connection is closed even on error if possible, but keep original error handling
     st.sidebar.error(f"❌ Error saving forecast: {e}")
 
 
