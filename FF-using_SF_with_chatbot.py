@@ -938,7 +938,7 @@ with tab3:
     try:
     MIRAGPT_URL = st.secrets.miragpt.url
     MIRAGPT_ACCESS_KEY = st.secrets.miragpt.access_key
-except AttributeError:
+    except AttributeError:
     st.error("🚨 Missing API configuration in Streamlit Secrets. Please check your `.streamlit/secrets.toml`.")
     st.stop() # Stop the app if credentials are not found
 
