@@ -935,45 +935,45 @@ with tab3:
 
     # ---------------------- HELPER: Use Hugging Face Free API for Recommendations --------------------
     def get_recommendations(prompt: str):
-            """
-            Generates business recommendations using the free Falcon-7B-Instruct model on Hugging Face.
-            """
-            try:
-                token = st.secrets["huggingface"]["api_token"]
-            except Exception:
-                return "🚨 Missing Hugging Face API token in Streamlit secrets."
-        
-            headers = {"Authorization": f"Bearer {token}"}
-            data = {
-                "inputs": prompt,
-                "parameters": {
-                    "max_new_tokens": 400,
-                    "temperature": 0.7,
-                    "return_full_text": False
-                }
+        """
+        Generates structured recommendations using the free 'google/flan-t5-large' model on Hugging Face.
+        """
+        try:
+            token = st.secrets["huggingface"]["api_token"]
+        except Exception:
+            return "🚨 Missing Hugging Face API token in Streamlit secrets."
+    
+        headers = {"Authorization": f"Bearer {token}"}
+        data = {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": 300,
+                "temperature": 0.7,
+                "return_full_text": False
             }
-        
-            try:
-                with st.spinner("🧠 Generating recommendations using Falcon-7B-Instruct model..."):
-                    response = requests.post(
-                        "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct",
-                        headers=headers,
-                        json=data,
-                        timeout=90
-                    )
-                    response.raise_for_status()
-                    output = response.json()
-        
-                    if isinstance(output, list) and "generated_text" in output[0]:
-                        return output[0]["generated_text"].strip()
-                    else:
-                        st.warning("⚠️ Unexpected API response format.")
-                        st.code(json.dumps(output, indent=2))
-                        return None
-        
-            except requests.exceptions.RequestException as e:
-                st.error(f"❌ Hugging Face API error: {e}")
-                return None
+        }
+    
+        try:
+            with st.spinner("🧠 Generating recommendations using Flan-T5-Large (free model)..."):
+                response = requests.post(
+                    "https://api-inference.huggingface.co/models/google/flan-t5-large",
+                    headers=headers,
+                    json=data,
+                    timeout=60
+                )
+                response.raise_for_status()
+                output = response.json()
+    
+                if isinstance(output, list) and "generated_text" in output[0]:
+                    return output[0]["generated_text"].strip()
+                else:
+                    st.warning("⚠️ Unexpected API response format.")
+                    st.code(json.dumps(output, indent=2))
+                    return None
+    
+        except requests.exceptions.RequestException as e:
+            st.error(f"❌ Hugging Face API error: {e}")
+            return None
 
 
         
