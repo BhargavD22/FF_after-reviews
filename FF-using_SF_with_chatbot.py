@@ -13,6 +13,7 @@ import requests
 import json
 from google import genai
 from google.genai.errors import APIError
+import tabulate
 
 # --- CONFIGURATION ---
 LOGO_PATH = "miracle-logo-dark.png"
