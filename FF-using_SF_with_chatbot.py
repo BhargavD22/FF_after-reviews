@@ -977,7 +977,9 @@ with tab3:
         "### Recommendation\n"
         "### Rationale\n"
         "### Action Items\n\n"
-        "Ensure the entire response contains only the 3 structured recommendations and nothing else."
+        "Focus your analysis on peak revenue periods, growth patterns, and improvement opportunities. "
+        "Ensure the entire response contains only the 3 structured recommendations and nothing else. "
+        "BEGIN YOUR RESPONSE DIRECTLY WITH '### Recommendation' for the first item." # <-- Added reliability instruction
     )
 
     # 2. Use the Gemini SDK to generate content
@@ -996,8 +998,8 @@ with tab3:
             
             # Configuration for the API call
             config = {
-                "max_output_tokens": 1024, 
-                "temperature": 0.7,
+                "max_output_tokens": 2048, 
+                "temperature": 0.5,
             }
 
             response = client.models.generate_content(
