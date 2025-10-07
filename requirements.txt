@@ -7,4 +7,5 @@ db-dtypes
 snowflake-connector-python
 requests
 google-genai
+tabulate 
 
