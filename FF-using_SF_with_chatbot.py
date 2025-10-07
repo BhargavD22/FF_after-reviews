@@ -933,117 +933,64 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-    st.markdown("### Recommendations")
-
-    # --- Safe Computation of Inputs ---
-    try:
-        forecast_cagr_pct = float(fore_cagr) * 100.0
-    except Exception:
-        forecast_cagr_pct = 0.0
-
-    # Compute MoM Growth safely
-    mom_growth = 0.0
-    try:
-        tmp = forecast[forecast['ds'] > df['ds'].max()].copy()
-        tmp['month'] = tmp['ds'].dt.to_period('M').dt.to_timestamp()
-        if 'yhat' in tmp.columns:
-            monthly_agg = tmp.groupby('month')['yhat'].sum().reset_index()
-            monthly_agg['MoM_Growth'] = monthly_agg['yhat'].pct_change() * 100.0
-            if not monthly_agg['MoM_Growth'].dropna().empty:
-                mom_growth = float(monthly_agg['MoM_Growth'].dropna().iloc[-1])
-    except Exception:
-        mom_growth = 0.0
+# --- LLM-GENERATED RECOMMENDATIONS (REPLACEMENT BLOCK) ---
 
     try:
-        volatility = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
-    except Exception:
-        volatility = 0.0
+    MIRAGPT_URL = st.secrets.miragpt.url
+    MIRAGPT_ACCESS_KEY = st.secrets.miragpt.access_key
+except AttributeError:
+    st.error("🚨 Missing API configuration in Streamlit Secrets. Please check your `.streamlit/secrets.toml`.")
+    st.stop() # Stop the app if credentials are not found
 
-    anomaly_detected_flag = False
-    try:
-        historical_comparison = pd.merge(df, forecast, on='ds', how='inner')
-        if 'yhat' in historical_comparison.columns:
-            historical_comparison['residuals'] = historical_comparison['y'] - historical_comparison['yhat']
-            std_res = historical_comparison['residuals'].std()
-            if std_res != 0:
-                historical_comparison['z_score'] = historical_comparison['residuals'] / std_res
-                anomalies_df = historical_comparison[historical_comparison['z_score'].abs() > 3]
-                anomaly_detected_flag = not anomalies_df.empty
-    except Exception:
-        anomaly_detected_flag = False
 
-    # --- Recommendation Generator ---
-    def generate_recommendation(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
-        if cagr_pct > 10:
-            trend = "strong growth"
-            action = "increase inventory and scale marketing campaigns"
-        elif cagr_pct > 0:
-            trend = "moderate growth"
-            action = "maintain steady operations with cautious optimizations"
-        else:
-            trend = "a decline"
-            action = "focus on cost optimization and strengthen customer retention"
-
-        if volatility_val > 0.2 * abs(cagr_pct):
-            risk = "However, forecasts show high volatility; plan for uncertainty and buffer inventory."
-        else:
-            risk = "The forecast appears relatively stable with low uncertainty."
-
-        anomaly_text = " Recent anomalies were detected — investigate supply chain, promotions, or data quality." if anomalies_bool else ""
-
-        return (
-            f"Revenue is projected to show {trend} with a CAGR of {cagr_pct:.2f}%. "
-            f"Recommended action: {action}. {risk}{anomaly_text}"
-        )
-
-    # --- Generate & Display ---
-    recommendation_text = generate_recommendation(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
-
-    if forecast_cagr_pct > 10:
-        st.success("Recommendation Category: Expand")
-    elif forecast_cagr_pct < -5:
-        st.error("Recommendation Category: Optimize")
-    else:
-        st.info("Recommendation Category: Maintain")
-
-    st.markdown(f"**Automated Recommendation:** {recommendation_text}")
-    st.markdown("---")
-    st.markdown("### Actionable Next Steps")
-
-    # --- Dynamic Next Steps Generator ---
-    def generate_next_steps(cagr_pct, mom_growth_pct, volatility_val, anomalies_bool):
-        steps = []
-
-        # Growth actions
-        if cagr_pct > 10:
-            steps.append("📦 Align budgets and inventory planning to meet forecast peaks.")
-            steps.append("📢 Increase marketing and promotions to maximize growth momentum.")
-            steps.append("👥 Consider scaling headcount or logistics capacity.")
-        elif cagr_pct > 0:
-            steps.append("⚖️ Maintain steady operations while optimizing supply chain costs.")
-            steps.append("📊 Monitor leading indicators like customer acquisition and basket size.")
-            steps.append("⏱️ Re-run forecasts monthly to validate continued growth trajectory.")
-        else:
-            steps.append("💰 Focus on cost optimization across operations.")
-            steps.append("🔍 Deep-dive into segments or SKUs contributing to decline.")
-            steps.append("🤝 Explore customer retention campaigns to protect revenue base.")
-
-        # Volatility actions
-        if volatility_val > 0.2 * abs(cagr_pct):
-            steps.append("⚠️ Build buffer inventory and contingency plans for uncertain demand.")
-            steps.append("📉 Stress test budgets against multiple demand scenarios.")
-
-        # Anomaly actions
-        if anomalies_bool:
-            steps.append("🚨 Investigate anomalies in recent data — check for supply chain shocks, promotions, or reporting issues.")
-
-        return steps
-
-    # --- Generate and Display Next Steps ---
-    next_steps = generate_next_steps(forecast_cagr_pct, mom_growth, volatility, anomaly_detected_flag)
-    for step in next_steps:
-        st.markdown(f"- {step}")
-
+    st.divider()
+    st.header("🎯 LLM-Generated Recommendations")
+    
+    # Use a spinner while waiting for the LLM response
+    with st.spinner("🧠 Analyzing forecast data from Snowflake and generating recommendations..."):
+        
+        # The analytical prompt instructs the LLM to use the data in the FINANCIAL_FORECAST_OUTPUT table
+        recommendation_prompt = "Using the data just inserted into the 'FINANCIAL_FORECAST_OUTPUT' table, generate three specific, actionable business recommendations and next steps. Structure the output clearly with headings for Recommendation, Rationale, and Next Steps. Focus the analysis on the three peak revenue periods."
+        
+        # Prepare the API request payload
+        payload = json.dumps({
+          "title": recommendation_prompt
+        })
+        
+        headers = {
+          'access-key': MIRAGPT_ACCESS_KEY,  # Secret is used here
+          'Content-Type': 'application/json'
+        }
+        
+        # Make the API call
+        try:
+            # Use a unique sessionId (e.g., based on timestamp) for tracing if needed
+            response = requests.post(
+                f"{MIRAGPT_URL}?sessionId=st_app_session_{datetime.now().strftime('%Y%m%d%H%M%S')}", # Secret is used here
+                headers=headers,
+                data=payload,
+                timeout=30 # Add a timeout in case the LLM is slow
+            )
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+            
+            data = response.json()
+            
+            # Extract and render the LLM's response
+            llm_summary = data.get('response', {}).get('summarized') or data.get('response', {}).get('summerized')
+    
+            if llm_summary:
+                st.success("✅ Recommendations Generated by LLM")
+                # Render the LLM's structured text (which should ideally be Markdown)
+                st.markdown(llm_summary)
+            else:
+                st.warning("⚠️ LLM analysis returned no structured summary. Check API prompt or configuration.")
+                
+        except requests.exceptions.RequestException as e:
+            st.error(f"❌ Error communicating with recommendation API. Check MIRAGPT URL/Access Key. Error: {e}")
+        except json.JSONDecodeError:
+            st.error("❌ Failed to decode JSON response from the API. The API might not have returned valid JSON.")
+        except Exception as e:
+            st.error(f"❌ An unexpected error occurred during API communication: {e}")
 
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
