@@ -251,8 +251,8 @@ with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
 # This is where we put the forecast values back into snowflake finance_forecast_output table
 try:
     # Clear previous run
-    cur.execute("TRUNCATE TABLE financial_forecast_output")
-    conn.commit()
+    #cur.execute("TRUNCATE TABLE financial_forecast_output")
+    #conn.commit()
     
     from snowflake.connector.pandas_tools import write_pandas
     write_pandas(conn, forecast[['ds','yhat','yhat_lower','yhat_upper']], "FINANCIAL_FORECAST_OUTPUT")
