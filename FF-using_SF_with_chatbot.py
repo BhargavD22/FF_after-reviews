@@ -277,17 +277,30 @@ try:
     conn.close()
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
-# --- Data Preparation for Gemini Prompt ---
-    # Use the combined historical + forecast data for comprehensive analysis
-    # We only want the relevant columns for the prompt analysis: ds, y, yhat, yhat_lower, yhat_upper
-    forecast_analysis_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(forecast_period_days).copy()
-    # Merge historical data for context
-    historical_context_df = df[['ds', 'y']].rename(columns={'y': 'yhat'})
-    # Combine the historical and forecasted data for LLM context
-    llm_data_df = pd.concat([historical_context_df, forecast_analysis_df]).tail(365 + forecast_period_days) # Last year + forecast
-    
-    # Convert the combined DataFrame to a Markdown table string
-    data_for_prompt = llm_data_df.to_markdown(index=False)
+# ---------------------------------------------------------------------
+# --- Data Preparation for Gemini Prompt
+# ---------------------------------------------------------------------
+# We need to combine df (historical) and forecast (full output) cleanly.
+
+# 1. Filter the historical data (last year for context)
+historical_context_df = df[['ds', 'y']].rename(columns={'y': 'yhat'})
+historical_context_df['yhat_lower'] = np.nan
+historical_context_df['yhat_upper'] = np.nan
+
+# 2. Filter the forecast data (Only the prediction and bounds)
+forecast_analysis_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+
+# 3. Combine the historical context and the forecast
+llm_data_df = pd.concat([historical_context_df, forecast_analysis_df])
+
+# Keep only the most recent relevant period (e.g., last 365 days of history + the forecast period)
+num_days_to_keep = 365 + forecast_period_days 
+llm_data_df = llm_data_df.drop_duplicates(subset=['ds']).sort_values('ds').tail(num_days_to_keep) 
+
+# 4. Convert the combined DataFrame to a Markdown table string
+global data_for_prompt # <-- CRITICAL FIX: Ensures variable is accessible in tab3
+data_for_prompt = llm_data_df.to_markdown(index=False)
+# ---------------------------------------------------------------------
 
 # Choose forecast column
 if what_if_enabled:
