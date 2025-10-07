@@ -279,28 +279,56 @@ try:
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
 # ---------------------------------------------------------------------
-# --- Data Preparation for Gemini Prompt
+# --- Data Preparation for Gemini Prompt (Summary Creation based on KPIs)
 # ---------------------------------------------------------------------
-# We need to combine df (historical) and forecast (full output) cleanly.
 
-# 1. Filter the historical data (last year for context)
-historical_context_df = df[['ds', 'y']].rename(columns={'y': 'yhat'})
-historical_context_df['yhat_lower'] = np.nan
-historical_context_df['yhat_upper'] = np.nan
+try:
+    # Ensure data is ready and clean
+    df_hist = df.copy()
+    df_hist['ds'] = pd.to_datetime(df_hist['ds'])
+    
+    df_forecast = forecast.copy()
+    df_forecast['ds'] = pd.to_datetime(df_forecast['ds'])
 
-# 2. Filter the forecast data (Only the prediction and bounds)
-forecast_analysis_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+    # --- 1. Calculate Summary Metrics (Ensure these variables are defined) ---
 
-# 3. Combine the historical context and the forecast
-llm_data_df = pd.concat([historical_context_df, forecast_analysis_df])
+    # Historical Analysis (using the last 365 days of history for growth)
+    hist_last_date = df_hist['ds'].max()
+    hist_first_date_for_growth = hist_last_date - pd.Timedelta(days=365)
 
-# Keep only the most recent relevant period (e.g., last 365 days of history + the forecast period)
-num_days_to_keep = 365 + forecast_period_days 
-llm_data_df = llm_data_df.drop_duplicates(subset=['ds']).sort_values('ds').tail(num_days_to_keep) 
+    hist_start_value = df_hist.loc[df_hist['ds'] >= hist_first_date_for_growth, 'y'].iloc[0]
+    hist_end_value = df_hist['y'].iloc[-1]
+    # safe_cagr is defined in your helper functions
+    historical_growth = safe_cagr(hist_start_value, hist_end_value, 1) * 100 # Convert to percentage
 
-# 4. Convert the combined DataFrame to a Markdown table string
-global data_for_prompt # <-- CRITICAL FIX: Ensures variable is accessible in tab3
-data_for_prompt = llm_data_df.to_markdown(index=False)
+    # Forecast Analysis
+    # Ensure 'yhat' column exists in forecast
+    forecast_revenue = df_forecast['yhat'].sum()
+    peak_revenue_date = df_forecast.loc[df_forecast['yhat'].idxmax(), 'ds'].strftime('%Y-%m-%d')
+    peak_revenue_value = df_forecast['yhat'].max()
+
+    # Confidence Interval Spread (average difference between upper/lower bounds)
+    avg_confidence_spread = (df_forecast['yhat_upper'] - df_forecast['yhat_lower']).mean()
+    # Calculate spread as a percentage of the mean forecast value
+    avg_confidence_spread_pct = (avg_confidence_spread / df_forecast['yhat'].mean()) * 100
+
+    # --- 2. Create the structured summary string ---
+    summary_for_prompt = f"""
+Financial Data Summary:
+- Historical Data Period Ends: {hist_last_date.strftime('%Y-%m-%d')}
+- Forecast Period: {df_forecast['ds'].min().strftime('%Y-%m-%d')} to {df_forecast['ds'].max().strftime('%Y-%m-%d')}
+- Historical Revenue Growth (Last Year): {historical_growth:.2f}%
+- Total Forecasted Revenue (Period Sum): ${forecast_revenue:,.2f}
+- Peak Forecast Revenue Date: {peak_revenue_date} (Value: ${peak_revenue_value:,.2f})
+- Average Confidence Interval Spread (Percentage of Mean Forecast): {avg_confidence_spread_pct:.2f}%
+"""
+    # CRITICAL FIX: Ensures variable is accessible in tab3
+    global summary_for_prompt
+except Exception as e:
+    # If the summary fails to generate, use a safe default string
+    global summary_for_prompt
+    summary_for_prompt = f"Failed to generate summary metrics due to calculation error: {e}. Cannot perform LLM analysis."
+
 # ---------------------------------------------------------------------
 
 # Choose forecast column
@@ -960,26 +988,31 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-        # [ ... Existing KPI summary code here ... ]
-
     st.divider()
     st.header("🎯 LLM-Generated Recommendations")
     
-    # 1. Define the new, data-injected prompt
-    # The 'data_for_prompt' variable is created in Step 2.
+# Check if the summary was successfully generated
+    if 'summary_for_prompt' not in globals():
+         st.warning("⚠️ Run the forecast first to generate the necessary data summary for the recommendations.")
+         st.stop()
+         
+    # 1. Define the new, concise, summary-injected prompt
     recommendation_prompt = (
-        "Analyze the following financial time-series data provided in the Markdown table format:\n\n"
-        f"---DATA---\n{data_for_prompt}\n---END DATA---\n\n" # <-- Data Injection
-        "The columns are: 'ds' (Date), 'yhat' (Predicted Revenue/Historical Revenue), 'yhat_lower', and 'yhat_upper'. "
-        "Based *only* on the data above, analyze revenue trends, identify peak periods, and comment on the 'yhat_lower' vs 'yhat_upper' bounds. "
-        "Generate 3 specific, actionable business recommendations and next steps. "
-        "Each recommendation must strictly follow this structure:\n\n"
-        "### Recommendation\n"
+        "Analyze the following pre-calculated financial KPIs and summary:\n\n"
+        f"---KPI SUMMARY---\n{summary_for_prompt}\n---END SUMMARY---\n\n" 
+        "Based *only* on the KPIs above, provide an analysis of revenue performance and forecast reliability. "
+        "Generate **3 specific, actionable business recommendations** and **next steps**."
+        "The output must strictly follow this structure:\n\n"
+        "### Recommendation 1: [Short Title]\n"
         "### Rationale\n"
         "### Action Items\n\n"
-        "Focus your analysis on peak revenue periods, growth patterns, and improvement opportunities. "
-        "Ensure the entire response contains only the 3 structured recommendations and nothing else. "
-        "BEGIN YOUR RESPONSE DIRECTLY WITH '### Recommendation' for the first item." # <-- Added reliability instruction
+        "### Recommendation 2: [Short Title]\n"
+        "### Rationale\n"
+        "### Action Items\n\n"
+        "### Recommendation 3: [Short Title]\n"
+        "### Rationale\n"
+        "### Action Items\n\n"
+        "Ensure your response contains *only* these three structured recommendations."
     )
 
     # 2. Use the Gemini SDK to generate content
@@ -987,35 +1020,38 @@ with tab3:
         # Load API key from Streamlit secrets
         api_key = st.secrets["gemini"]["api_key"]
     except AttributeError:
-        st.error("🚨 Missing Gemini API key in Streamlit secrets under [gemini] api_key.")
+        st.error("🚨 Missing Gemini API key in Streamlit secrets under [gemini] api_key. Check your secrets.toml file.")
         st.stop()
         
     try:
-        with st.spinner("🧠 Analyzing forecast data and generating recommendations with Gemini 2.5 Flash..."):
+        with st.spinner("🧠 Analyzing KPIs and generating recommendations with **Gemini 2.5 Flash**..."):
             
             # Initialize the Gemini Client
             client = genai.Client(api_key=api_key)
             
-            # Configuration for the API call
+            # FINAL RELIABILITY CONFIGURATION:
             config = {
-                "max_output_tokens": 2048, 
-                "temperature": 0.5,
+                # Use a slightly lower temperature for more deterministic, reliable formatting
+                "temperature": 0.7,         
+                # Use a generous token limit to prevent premature cutoff
+                "max_output_tokens": 2048,  
             }
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash", # Use a fast, capable model for analysis
+                model="gemini-2.5-flash", 
                 contents=recommendation_prompt,
                 config=config,
             )
 
             llm_summary = response.text
     
-            if llm_summary:
+            if llm_summary and llm_summary.strip(): # Check for both None/Empty string
                 st.success("✅ Recommendations Generated by Gemini 2.5 Flash")
                 # Render the LLM's structured text
                 st.markdown(llm_summary)
             else:
-                st.warning("⚠️ Gemini API returned an empty response.")
+                # If still empty, give the model a generic response to rule out API issues
+                st.warning("⚠️ Gemini API returned an empty response. The model may be struggling to meet the strict formatting requirements based on the KPIs provided.")
                 
     except APIError as e:
         st.error(f"❌ Gemini API Error (Check API Key/Rate Limits): {e}")
