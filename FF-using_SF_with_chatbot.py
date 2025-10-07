@@ -933,8 +933,9 @@ with tab3:
         f"- **Forecasted CAGR:** {fore_cagr:.2%}"
     )
 
-# --- LLM-GENERATED RECOMMENDATIONS  ---
-# Accessing secrets
+# --- LLM-GENERATED RECOMMENDATIONS ---
+
+    # Accessing secrets
     try:
         MIRAGPT_URL_BASE = st.secrets.miragpt.url_base
         MIRAGPT_ACCESS_KEY = st.secrets.miragpt.access_key
@@ -946,7 +947,8 @@ with tab3:
     
     # 🟢 Construct the FINAL required session ID, combining the static and dynamic parts
     # This uses the required static ID plus a dynamic timestamp for unique tracking
-    final_session_id = f"{MIRAGPT_STATIC_SESSION_ID}**-dynamic-**{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    # Note: Using an underscore instead of double asterisks for safer formatting:
+    final_session_id = f"{MIRAGPT_STATIC_SESSION_ID}_dynamic_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     
     st.divider()
@@ -967,8 +969,8 @@ with tab3:
         
         # Make the API call
         try:
-            # 🟢 CRITICAL FIX: Use MIRAGPT_URL_BASE (without query params) and correctly append
-            # the combined session ID using a single question mark (?).
+            # 🟢 CRITICAL FIX: Use MIRAGPT_URL_BASE and correctly append the combined session ID
+            # using a single question mark (?).
             response = requests.post(
                 f"{MIRAGPT_URL_BASE}?sessionId={final_session_id}",
                 headers=headers,
@@ -977,7 +979,7 @@ with tab3:
             )
             response.raise_for_status()
                 
-                data = response.json()
+            data = response.json()
             
             # Extract and render the LLM's response
             llm_summary = data.get('response', {}).get('summarized') or data.get('response', {}).get('summerized')
