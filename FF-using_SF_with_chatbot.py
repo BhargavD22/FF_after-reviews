@@ -940,7 +940,8 @@ with tab3:
         MIRAGPT_URL_BASE = st.secrets.miragpt.url_base
         MIRAGPT_ACCESS_KEY = st.secrets.miragpt.access_key
         # 🟢 Get the static part of the required session ID
-        MIRAGPT_STATIC_SESSION_ID = st.secrets.miragpt.static_session_id
+        #MIRAGPT_STATIC_SESSION_ID = st.secrets.miragpt.static_session_id
+        
     except AttributeError:
         st.error("🚨 Missing API configuration in Streamlit Secrets. Please check your `.streamlit/secrets.toml`.")
         st.stop() # Stop the app if credentials are not found
@@ -948,7 +949,8 @@ with tab3:
     # 🟢 Construct the FINAL required session ID, combining the static and dynamic parts
     # This uses the required static ID plus a dynamic timestamp for unique tracking
     # Note: Using an underscore instead of double asterisks for safer formatting:
-    final_session_id = f"{MIRAGPT_STATIC_SESSION_ID}_dynamic_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    #final_session_id = f"{MIRAGPT_STATIC_SESSION_ID}_dynamic_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    final_session_id = f"st_app_query_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
     
     
     st.divider()
