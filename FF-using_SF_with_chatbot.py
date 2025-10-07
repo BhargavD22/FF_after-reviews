@@ -1070,6 +1070,7 @@ with tab3:
                 st.warning("⚠️ Gemini API returned an empty response, even in JSON mode. This usually indicates an extremely low confidence or a problem with the input KPIs.")
                 
     except APIError as e:
+        st.error(f"❌ An unexpected error occurred: {e}")
 
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
