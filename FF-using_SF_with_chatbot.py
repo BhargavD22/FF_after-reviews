@@ -934,8 +934,6 @@ with tab3:
     )
 
     # ---------------------- HELPER: Use Hugging Face Free API for Recommendations ----------------------
-import requests, json, streamlit as st
-
     def get_recommendations(prompt: str):
         """
         Generates business recommendations using Hugging Face's free Mistral-7B model.
