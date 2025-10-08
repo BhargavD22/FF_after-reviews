@@ -58,7 +58,7 @@ st.markdown(
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         html, body, .stApp {{ font-family: 'Inter', sans-serif; }}
 
-        /* App background */
+        /* App background and text color */
         .stApp {{
             background-color: #f6f8fb;
             color: #222;
@@ -88,10 +88,28 @@ st.markdown(
         }}
         .kpi-container:hover {{ transform: translateY(-6px); }}
 
-        .kpi-title {{ font-size:0.95rem; color:#354251; font-weight:600; margin:0; }}
-        .kpi-value {{ font-size:1.8rem; font-weight:700; color:#0b6ef6; margin:0.2rem 0; }}
-        .kpi-subtitle {{ font-size:0.85rem; color:#556370; margin:0; }}
-        .kpi-delta {{ font-size:1rem; font-weight:600; margin-top:0.5rem; }}
+        .kpi-title {{
+            font-size:0.95rem;
+            color:#354251;
+            font-weight:600;
+            margin:0;
+        }}
+        .kpi-value {{
+            font-size:1.8rem;
+            font-weight:700;
+            color:#0b6ef6;
+            margin:0.2rem 0;
+        }}
+        .kpi-subtitle {{
+            font-size:0.85rem;
+            color:#556370;
+            margin:0;
+        }}
+        .kpi-delta {{
+            font-size:1rem;
+            font-weight:600;
+            margin-top:0.5rem;
+        }}
         .positive-delta {{ color:#1f9d55; }}
         .negative-delta {{ color:#d45a5a; }}
 
@@ -123,7 +141,9 @@ st.markdown(
             border-radius: 8px;
             font-weight: 600;
         }}
-        .stDownloadButton button:hover {{ background:#084d9c; }}
+        .stDownloadButton button:hover {{
+            background:#084d9c;
+        }}
 
         /* Date inputs */
         div[data-testid="stDateInput"] input {{
@@ -136,11 +156,98 @@ st.markdown(
             border-color: #0b6ef6;
             box-shadow: 0 0 0 0.2rem rgba(11,110,246,0.12);
         }}
+
+        /* --- Collapsible Recommendation Cards --- */
+        .rec-card {{
+            background: linear-gradient(135deg, #f3e8ff, #ede9fe);
+            border: 1px solid #ddd6fe;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 16px rgba(100, 21, 255, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+        }}
+
+        .rec-toggle {{
+            width: 100%;
+            background: transparent;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #4c1d95;
+            cursor: pointer;
+            text-align: left;
+        }}
+
+        .rec-toggle:hover {{
+            background: rgba(124, 58, 237, 0.08);
+        }}
+
+        .rec-arrow {{
+            font-size: 1rem;
+            color: #6d28d9;
+            font-weight: bold;
+            transition: transform 0.2s ease-in-out;
+        }}
+
+        .rec-toggle[aria-expanded="true"] .rec-arrow {{
+            transform: rotate(180deg);
+        }}
+
+        .rec-content {{
+            display: none;
+            padding: 0.8rem 1.25rem 1.1rem 1.25rem;
+            animation: fadeIn 0.25s ease-in;
+        }}
+
+        .rec-rationale {{
+            font-size: 0.95rem;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }}
+
+        .rec-actions {{
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }}
+
+        .rec-actions li {{
+            background: #f5f3ff;
+            color: #1f2937;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }}
+
+        .rec-number {{
+            background: #7c3aed;
+            color: #fff;
+            font-weight: 700;
+            padding: 0.35rem 0.75rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-right: 0.5rem;
+        }}
+
+        .rec-title {{
+            flex: 1;
+            margin-left: 0.5rem;
+        }}
+
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(-5px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
     </style>
     """,
     unsafe_allow_html=True
 )
-
 # --- App header + guide ---
 st.title("📈 Financial Forecasting - Revenue ")
 
@@ -969,109 +1076,156 @@ with tab3:
     st.markdown('<div id="insights--recommendations"></div>', unsafe_allow_html=True)
     st.subheader("📚 Insights & Recommendations")
 
-    # compute summary KPIs (re-use values computed earlier)
+    # --- 1️⃣ Stylized Summary Section ---
+    st.markdown("### 📊 Executive Summary Overview")
+
     hist_total = total_historical_revenue
     fore_total = total_forecasted_revenue
     change_pct = total_revenue_delta
     hist_cagr = cagr_hist
     fore_cagr = cagr_forecast
-
     trend_icon = "📈" if change_pct > 0 else ("📉" if change_pct < 0 else "➡️")
-    st.markdown(f"### {trend_icon} Summary")
-    st.markdown(
-        f"- **Total Historical Revenue:** ${hist_total:,.0f}\n"
-        f"- **Total Forecasted Revenue ({forecast_months} mo):** ${fore_total:,.0f}\n"
-        f"- **Change vs Historical:** {change_pct:.2f}%\n"
-        f"- **Historical CAGR:** {hist_cagr:.2%}\n"
-        f"- **Forecasted CAGR:** {fore_cagr:.2%}"
+
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Total Historical Revenue</p>
+            <p class="kpi-value">${hist_total/1_000_000:,.2f}M</p>
+            <p class="kpi-subtitle">Sum of all historical periods</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_s2:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Total Forecasted Revenue</p>
+            <p class="kpi-value">${fore_total/1_000_000:,.2f}M</p>
+            <p class="kpi-subtitle">Projected for {forecast_months} months</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_s3:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Change vs Historical</p>
+            <p class="kpi-value" style="color:{'green' if change_pct>0 else 'red'};">{change_pct:,.2f}%</p>
+            <p class="kpi-subtitle">Forecasted growth vs past</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col_s4, col_s5 = st.columns(2)
+    with col_s4:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Historical CAGR</p>
+            <p class="kpi-value">{hist_cagr:,.2%}</p>
+            <p class="kpi-subtitle">Average annual growth rate</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_s5:
+        st.markdown(f"""
+        <div class="kpi-container">
+            <p class="kpi-title">Forecasted CAGR</p>
+            <p class="kpi-value">{fore_cagr:,.2%}</p>
+            <p class="kpi-subtitle">Predicted annualized growth rate</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # --- 2️⃣ Gemini Recommendations Section ---
+    st.header("🎯 AI-Generated Recommendations")
+
+    if 'summary_for_prompt' not in globals():
+         st.warning("⚠️ Run the forecast first to generate summary data.")
+         st.stop()
+
+    recommendation_prompt = (
+        "Analyze the following financial KPIs and summary:\n\n"
+        f"---SUMMARY---\n{summary_for_prompt}\n---END SUMMARY---\n\n"
+        "Generate 3 clear, data-driven business recommendations. Each should include a rationale and 3-5 measurable action items. "
+        "Output must be valid JSON following the defined schema."
     )
 
-    st.divider()
-    st.header("🎯 LLM-Generated Recommendations")
-    
-# Check if the summary was successfully generated
-    if 'summary_for_prompt' not in globals():
-         st.warning("⚠️ Run the forecast first to generate the necessary data summary for the recommendations.")
-         st.stop()
-         
-    # 1. Define the NEW, JSON-FOCUSED prompt
-    recommendation_prompt = (
-        "Analyze the following pre-calculated financial KPIs and summary:\n\n"
-        f"---KPI SUMMARY---\n{summary_for_prompt}\n---END SUMMARY---\n\n" 
-        "Based *only* on the KPIs above, provide an analysis of revenue performance and forecast reliability. "
-        "Generate 3 specific, actionable business recommendations and next steps."
-        "You MUST return the output as a valid JSON object that strictly adheres to the schema provided."
-    )
-    
-    # 2. Define the output structure (JSON Schema)
     recommendations_schema = {
         "type": "object",
         "properties": {
             "recommendations": {
                 "type": "array",
-                "description": "A list of exactly three actionable business recommendations.",
                 "items": {
                     "type": "object",
                     "properties": {
-                        "recommendation": {"type": "string", "description": "The main recommendation title/summary."},
-                        "rationale": {"type": "string", "description": "The reasoning based on the provided KPI summary."},
-                        "action_items": {"type": "array", "items": {"type": "string"}, "description": "3-5 specific, measurable next steps."},
+                        "recommendation": {"type": "string"},
+                        "rationale": {"type": "string"},
+                        "action_items": {"type": "array", "items": {"type": "string"}}
                     },
-                    "required": ["recommendation", "rationale", "action_items"],
-                },
+                    "required": ["recommendation", "rationale", "action_items"]
+                }
             }
         },
         "required": ["recommendations"]
     }
 
-    # ... (code loading API key) ...
-        
     try:
-        with st.spinner("🧠 Analyzing KPIs and generating recommendations with **Gemini 2.5 Flash** (JSON Mode)..."):
-            
-            # Initialize the Gemini Client
+        with st.spinner("🧠 Generating actionable recommendations using Gemini 2.5 Flash..."):
             client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
-            
-            # 3. FINAL RELIABILITY CONFIGURATION: Use JSON Schema
             config = {
                 "temperature": 0.5,
                 "max_output_tokens": 4096,
-                # THIS IS THE CRITICAL CHANGE: Request JSON output
                 "response_mime_type": "application/json",
-                "response_schema": recommendations_schema, 
+                "response_schema": recommendations_schema,
             }
-
             response = client.models.generate_content(
-                model="gemini-2.5-flash", 
+                model="gemini-2.5-flash",
                 contents=recommendation_prompt,
                 config=config,
             )
 
-            # --- HANDLING JSON OUTPUT ---
             if response.text and response.text.strip():
-                # Attempt to parse the JSON output
-                try:
-                    llm_data = json.loads(response.text)
-                    st.success("✅ Recommendations Generated by Gemini 2.5 Flash")
-                    
-                    # 4. Display the results in Markdown format for the user
-                    for i, rec in enumerate(llm_data['recommendations']):
-                        st.markdown(f"### Recommendation {i+1}: {rec['recommendation']}")
-                        st.markdown(f"**Rationale:** {rec['rationale']}")
-                        st.markdown(f"**Action Items:**")
-                        for item in rec['action_items']:
-                            st.markdown(f"- {item}")
-                        st.divider()
+                llm_data = json.loads(response.text)
+                st.success("✅ AI Recommendations Ready")
 
-                except json.JSONDecodeError:
-                    st.error("❌ Model returned text, but it was not valid JSON. Showing raw output:")
-                    st.code(response.text)
+                for i, rec in enumerate(llm_data["recommendations"], start=1):
+                    display_style = "block" if i == 1 else "none"
+                    arrow_symbol = "▲" if i == 1 else "▼"
+                    st.markdown(f"""
+                    <div class="rec-card">
+                        <button class="rec-toggle" onclick="toggleRec(this)">
+                            <span class="rec-number">#{i}</span>
+                            <span class="rec-title">{rec['recommendation']}</span>
+                            <span class="rec-arrow">{arrow_symbol}</span>
+                        </button>
+                        <div class="rec-content" style="display:{display_style};">
+                            <p class="rec-rationale"><b>Rationale:</b> {rec['rationale']}</p>
+                            <ul class="rec-actions">
+                                {''.join(f'<li>✅ {item}</li>' for item in rec['action_items'])}
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # JS for collapsible cards
+                st.markdown("""
+                <script>
+                function toggleRec(btn) {
+                    const content = btn.nextElementSibling;
+                    const arrow = btn.querySelector('.rec-arrow');
+                    if (content.style.display === 'block') {
+                        content.style.display = 'none';
+                        arrow.textContent = '▼';
+                    } else {
+                        content.style.display = 'block';
+                        arrow.textContent = '▲';
+                    }
+                }
+                </script>
+                """, unsafe_allow_html=True)
+
             else:
-                st.warning("⚠️ Gemini API returned an empty response, even in JSON mode. This usually indicates an extremely low confidence or a problem with the input KPIs.")
-                
-    except APIError as e:
-        st.error(f"❌ An unexpected error occurred: {e}")
+                st.warning("⚠️ No recommendations returned from Gemini.")
+    except Exception as e:
+        st.error(f"❌ Error generating recommendations: {e}")
 
+    st.markdown("---")
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
 with tab4:
