@@ -1075,7 +1075,7 @@ with tab2:
 with tab3:
     st.markdown('<div id="insights--recommendations"></div>', unsafe_allow_html=True)
     st.subheader("📚 Insights & Recommendations")
-
+    st.markdown("---")
     # --- 1️⃣ Stylized Summary Section ---
     st.markdown("### 📊 Executive Summary Overview")
 
