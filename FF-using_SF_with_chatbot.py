@@ -1457,23 +1457,38 @@ with tab5:
         else:
             # Build the deep-dive prompt
             DEEP_DIVE_PROMPT = f"""
-            You are a senior financial strategist advising a CTO.
-            Analyze the following financial summary and forecast data to provide
-            a forward-looking, executive-level technology strategy report.
-
-            **Summary KPIs:**
-            {summary_for_prompt}
-
-            **Forecast Horizon:**
-            {forecast_months} months
-
-            Write a clear markdown report with four sections:
-            1. Forecasted Trajectory & Velocity
-            2. Critical Future Risk Windows & Technology Contingency
-            3. Strategic R&D / Tech Investment Timing
-            4. Long-Term Architectural Strategy
-
-            Keep the tone analytical and concise for C-suite readers.
+                    You are an executive financial strategist advising a Chief Technology Officer (CTO).
+                    Based on the following financial summary and forecast data, create a concise, actionable
+                    technology strategy briefing suitable for an executive meeting deck.
+                    
+                    **Summary KPIs:**
+                    {summary_for_prompt}
+                    
+                    **Forecast Horizon:** {forecast_months} months
+                    
+                    Structure the output in markdown using exactly four titled sections:
+                    
+                    ### 1. Forecasted Trajectory & Velocity
+                    Briefly summarize the growth direction, momentum, and key performance signal.
+                    Use one short paragraph or 3–4 bullets — focus on *speed and direction*, not data repetition.
+                    
+                    ### 2. Critical Future Risk Windows & Tech Contingency
+                    Highlight the single biggest projected dip or uncertainty window.
+                    Explain in 2–3 bullets what *technology or architecture-level mitigations* could reduce that risk.
+                    
+                    ### 3. Strategic R&D / Tech Investment Timing
+                    Identify the best upcoming window (month/quarter) for new investment or scaling,
+                    and justify it in 2–3 concise bullets — focus on opportunity, not cost.
+                    
+                    ### 4. Long-Term Architectural Strategy
+                    Give a high-level 12–18 month outlook.
+                    State whether the focus should be on **scaling**, **cost optimization**, or **stabilization**,
+                    and list 2–4 practical steps (e.g., AI integration, automation, infra scaling, modernization).
+                    
+                    Keep tone direct, analytical, and C-suite friendly:
+                    - Avoid long explanations or technical jargon.
+                    - No more than 4–5 sentences or bullets per section.
+                    - End with an optional 1-line “Strategic Summary” if appropriate.
             """
 
             try:
