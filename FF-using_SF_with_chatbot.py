@@ -263,6 +263,16 @@ with st.sidebar:
     st.subheader("Forecast Period")
     forecast_months = st.slider("Select number of months to forecast:", min_value=1, max_value=60, value=36)
     forecast_period_days = forecast_months * 30  # Prophet uses days
+    # Track horizon changes for auto-triggering CTO report regeneration
+    if "last_forecast_months" not in st.session_state:
+        st.session_state.last_forecast_months = forecast_months
+        st.session_state.trigger_cto_refresh = False
+    elif st.session_state.last_forecast_months != forecast_months:
+        st.session_state.last_forecast_months = forecast_months
+        st.session_state.trigger_cto_refresh = True
+    else:
+        st.session_state.trigger_cto_refresh = False
+
 
     st.subheader("Model Configuration")
     confidence_interval = st.slider("Confidence Interval (%)", min_value=80, max_value=99, value=90, step=1) / 100
@@ -1430,82 +1440,63 @@ with tab4:
         st.plotly_chart(fig_anomalies, use_container_width=True)
     
     st.markdown("---")
-# --- TAB 5: CTO STRATEGIC REPORT (Future-Focused Deep Dive) ---
+# ---------------------- TAB 5: CTO STRATEGIC REPORT ----------------------
 with tab5:
     st.header("CTO Strategic Trajectory & Deep Dive")
-    st.info("Executive-level analysis powered by Gemini, synthesizing historical context with future revenue forecasts to guide technology strategy.")
+    st.info("Executive-level analysis powered by Gemini (Free Tier)")
     st.markdown("---")
 
-    # --- GEMINI DEEP DIVE ANALYSIS BLOCK (Forward-Looking Strategic Report) ---
+    # Auto-generate or manual trigger
+    auto_trigger = st.session_state.get('trigger_cto_refresh', False)
+    manual_trigger = st.button("🔄 Generate CTO Strategic Report")
 
-    # Use a unique session state key for caching the Deep Dive result
-    if 'cto_deep_dive_analysis' not in st.session_state or st.button("Generate CTO Strategic Report", key="refresh_cto_dive_btn"):
-        
-        # Check for data availability
-        # This relies on 'future_data_string' and 'summary_for_prompt' being set after the forecast run (e.g., in Tab 2).
-        if 'future_data_string' not in globals() or 'summary_for_prompt' not in globals():
-            st.warning("⚠️ Please run the financial forecast first (in the Forecasting tab) to generate the necessary data.")
+    if auto_trigger or manual_trigger:
+        if 'summary_for_prompt' not in globals():
+            st.warning("⚠️ Please run the forecast first (Tab 1) to generate the summary.")
             st.session_state.cto_deep_dive_analysis = "No data available."
         else:
-            # --- Enhanced Deep Dive Prompt Setup for CTO Focus ---
+            # Build the deep-dive prompt
             DEEP_DIVE_PROMPT = f"""
-            You are a top-tier financial strategist for a technology company. Your audience is the Chief Technology Officer (CTO). Analyze the following historical KPIs and the future time-series forecast to give a deep-dive analysis. Focus on technology and strategic resource allocation.
+            You are a senior financial strategist advising a CTO.
+            Analyze the following financial summary and forecast data to provide
+            a forward-looking, executive-level technology strategy report.
 
-            **Historical KPIs & Summary:**
+            **Summary KPIs:**
             {summary_for_prompt}
 
-            **Forecast Data Sample (Future Dates):**
-            {future_data_string}
+            **Forecast Horizon:**
+            {forecast_months} months
 
-            Provide a concise, executive-level, 'future-proof' analysis. Structure your response into four distinct markdown sections, focusing on strategic implications:
+            Write a clear markdown report with four sections:
+            1. Forecasted Trajectory & Velocity
+            2. Critical Future Risk Windows & Technology Contingency
+            3. Strategic R&D / Tech Investment Timing
+            4. Long-Term Architectural Strategy
 
-            ### 1. Forecasted Trajectory & Velocity
-            Synthesize the historical growth (from the summary) against the 'yhat' projected trend. **Is the future trajectory a strategic acceleration (requiring immediate scaling) or a period of necessary consolidation (requiring cost-optimization)?**
-
-            ### 2. Critical Future Risk Windows & Technology Contingency
-            Identify the single most severe future drop or widest uncertainty period (yhat_lower). Propose one **technology-driven contingency plan** (e.g., scaling infrastructure, implementing AI optimization) to mitigate this specific risk period.
-
-            ### 3. Strategic R&D/Tech Investment Timing
-            Based on the forecast's confidence band and peak opportunity windows (yhat_upper), recommend the **optimal quarter/timing for a major R&D investment** (e.g., platform migration, new product launch) to maximize the projected revenue spike.
-
-            ### 4. Long-Term Architectural Strategy
-            Based on the overall projected revenue stability and volatility, advise the CTO on the required architectural strategy for the next 12-18 months (e.g., **aggressive platform scaling**, **cost optimization focus**, or **stabilization of core systems**).
-
-            Provide your analysis as a clear, well-formatted markdown response. Do not use JSON.
+            Keep the tone analytical and concise for C-suite readers.
             """
 
-            # --- Gemini API Call ---
             try:
-                with st.spinner("⏳ Generating CTO Strategic Report using Gemini 2.5 Flash..."):
+                with st.spinner("🧠 Generating CTO Strategic Report via Gemini..."):
                     client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
-                    
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-2.5-flash", 
                         contents=[DEEP_DIVE_PROMPT]
                     )
-                    
-                    analysis_text = response.text
+                    analysis_text = response.text.strip()
                     st.session_state.cto_deep_dive_analysis = analysis_text
-                    st.success("✅ Strategic Report Ready")
-
-            except APIError as e:
-                st.error(f"Gemini API Error: Failed to retrieve analysis. ({e})")
-                st.session_state.cto_deep_dive_analysis = "Error: Could not retrieve deep dive analysis due to an API error."
+                    st.success("✅ Strategic Report Generated")
             except Exception as e:
-                st.error(f"Error processing deep dive: {e}")
-                st.session_state.cto_deep_dive_analysis = "Error: Analysis failed due to an unexpected issue."
+                st.error(f"❌ Error generating report: {e}")
+                st.session_state.cto_deep_dive_analysis = f"Error: {e}"
 
-    # --- Display Results ---
-    if st.session_state.get('cto_deep_dive_analysis') == "No data available.":
-        st.warning("⚠️ Please ensure the forecast is run and data is loaded to generate the strategic report.")
-    elif 'cto_deep_dive_analysis' in st.session_state:
-        st.subheader("Future-Proof Strategic Report (Powered by AI)")
-        # Display the Gemini-generated markdown analysis directly
+    # Display results
+    if 'cto_deep_dive_analysis' in st.session_state:
+        st.subheader("📘 AI-Generated Strategic Report")
         st.markdown(st.session_state.cto_deep_dive_analysis)
     else:
-        st.info("Click 'Generate CTO Strategic Report' to initiate the AI analysis.")
-    
-    st.markdown("---")
+        st.info("Click the button above or move the forecast slider to generate the CTO report.")
+
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
