@@ -153,7 +153,7 @@ Financial Data Summary:
         st.session_state.forecast_run = False
         st.session_state.summary_for_prompt = f"Failed to run model: {e}"
         return False
-
+global summary_for_prompt
 encoded_logo = get_image_base64(LOGO_PATH)
 encoded_chat_icon = get_image_base64(CHAT_ICON_PATH)
 # --- Session State Initialization for Data Persistence ---
