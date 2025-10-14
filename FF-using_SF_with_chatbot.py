@@ -43,132 +43,9 @@ def safe_cagr(first_value, last_value, num_years):
         return (last_value / first_value) ** (1.0 / num_years) - 1.0
     except Exception:
         return 0.0
-# --- New function to handle model execution, data prep, and saving ---
-def run_prophet_model_and_save(df, forecast_period_days, confidence_interval, weekly_seasonality, yearly_seasonality, what_if_enabled, what_if_change, conn, cur):
-    """Encapsulates Prophet model training, forecasting, Snowflake saving, and Gemini data prep. Stores results in st.session_state."""
-    try:
-        # --- Prophet Model Fit ---
-        holidays_df = pd.DataFrame([
-            {'holiday': 'Product Launch Spike', 'ds': pd.to_datetime('2022-07-15'), 'lower_window': -5, 'upper_window': 5},
-            {'holiday': 'Supply Chain Dip', 'ds': pd.to_datetime('2023-11-20'), 'lower_window': -5, 'upper_window': 5},
-        ])
-        df['floor'] = 0
-
-        model = Prophet(weekly_seasonality=weekly_seasonality,
-                        yearly_seasonality=yearly_seasonality,
-                        holidays=holidays_df,
-                        growth='linear',
-                        interval_width=confidence_interval)
-        model.fit(df)
-
-        future = model.make_future_dataframe(periods=forecast_period_days)
-        future['floor'] = 0
-        forecast = model.predict(future)
-        forecast['ds'] = pd.to_datetime(forecast['ds'])
-        # Apply what-if scenario
-        forecast['yhat_what_if'] = forecast['yhat'] * (1 + what_if_change / 100.0)
-        
-        # --- Snowflake Save (Free Tier Optimization: Only saves yhat, yhat_lower, yhat_upper) ---
-        forecast_for_sf = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].copy()
-        forecast_for_sf['ds'] = forecast_for_sf['ds'].dt.date
-        forecast_for_sf.columns = ['DS', 'YHAT', 'YHAT_LOWER', 'YHAT_UPPER']
-        
-        # Ensure connection is open for saving
-        if conn.closed:
-             conn = snowflake.connector.connect(
-                user=st.secrets["snowflake"]["user"],
-                password=st.secrets["snowflake"]["password"],
-                account=st.secrets["snowflake"]["account"],
-                warehouse=st.secrets["snowflake"]["warehouse"],
-                database=st.secrets["snowflake"]["database"],
-                schema=st.secrets["snowflake"]["schema"]
-             )
-             cur = conn.cursor()
-             
-        cur.execute("TRUNCATE TABLE financial_forecast_output")
-        conn.commit()
-        from snowflake.connector.pandas_tools import write_pandas
-        write_pandas(conn, forecast_for_sf, "FINANCIAL_FORECAST_OUTPUT")
-        st.sidebar.success("✅ Forecast saved into Snowflake (financial_forecast_output)")
-        
-        # --- Data Preparation for Gemini Prompt (Summary Creation) ---
-        df_hist = df.copy()
-        hist_last_date = df_hist['ds'].max()
-        hist_first_date_for_growth = hist_last_date - pd.Timedelta(days=365)
-        hist_start_value = df_hist.loc[df_hist['ds'] >= hist_first_date_for_growth, 'y'].iloc[0]
-        hist_end_value = df_hist['y'].iloc[-1]
-        historical_growth = safe_cagr(hist_start_value, hist_end_value, 1) * 100 
-
-        forecast_revenue = forecast['yhat'].sum()
-        peak_revenue_date = forecast.loc[forecast['yhat'].idxmax(), 'ds'].strftime('%Y-%m-%d')
-        peak_revenue_value = forecast['yhat'].max()
-
-        avg_confidence_spread = (forecast['yhat_upper'] - forecast['yhat_lower']).mean()
-        avg_confidence_spread_pct = (avg_confidence_spread / forecast['yhat'].mean()) * 100
-        
-        summary = f"""
-Financial Data Summary:
-- Historical Data Period Ends: {hist_last_date.strftime('%Y-%m-%d')}
-- Forecast Period: {forecast['ds'].min().strftime('%Y-%m-%d')} to {forecast['ds'].max().strftime('%Y-%m-%d')}
-- Historical Revenue Growth (Last Year): {historical_growth:.2f}%
-- Total Forecasted Revenue (Period Sum): ${forecast_revenue:,.2f}
-- Peak Forecast Revenue Date: {peak_revenue_date} (Value: ${peak_revenue_value:,.2f})
-- Average Confidence Interval Spread (Percentage of Mean Forecast): {avg_confidence_spread_pct:.2f}%
-""" 
-        # --- Store in Session State ---
-        st.session_state.forecast_run = True
-        st.session_state.forecast_data = forecast
-        st.session_state.summary_for_prompt = summary
-        
-        # Sample future data for the prompt (Free Tier Optimization: Only send 15 key rows)
-        future_df_for_gemini = forecast[forecast['ds'] > df_hist['ds'].max()].copy()
-        N = len(future_df_for_gemini)
-        if N > 20: 
-            sampled_indices = (list(range(5)) + 
-                               list(range(N // 2 - 2, N // 2 + 3)) + 
-                               list(range(N - 5, N)))
-            sampled_indices = sorted(list(set(sampled_indices)))
-            sampled_future_df = future_df_for_gemini.iloc[sampled_indices]
-        else:
-            sampled_future_df = future_df_for_gemini
-            
-        st.session_state.future_data_string = sampled_future_df.to_csv(
-            index=False,
-            date_format='%Y-%m-%d',
-            columns=['ds', 'yhat', 'yhat_lower', 'yhat_upper']
-        )
-        
-        # Build and store combined DF for all charts
-        forecast_col = 'yhat_what_if' if what_if_enabled else 'yhat'
-        combined_df = pd.concat([
-            df[['ds', 'y']].assign(type='Historical').set_index('ds'),
-            forecast.rename(columns={forecast_col: 'y'})[['ds', 'y']].assign(type='Forecast').set_index('ds')
-        ]).reset_index()
-        st.session_state.combined_df = combined_df
-        
-        return True
-
-    except Exception as e:
-        st.error(f"❌ Error during model execution or saving: {e}")
-        st.session_state.forecast_run = False
-        st.session_state.summary_for_prompt = f"Failed to run model: {e}"
-        return False
 
 encoded_logo = get_image_base64(LOGO_PATH)
 encoded_chat_icon = get_image_base64(CHAT_ICON_PATH)
-# --- Session State Initialization for Data Persistence ---
-if 'forecast_run' not in st.session_state:
-    st.session_state.forecast_run = False
-if 'forecast_data' not in st.session_state:
-    st.session_state.forecast_data = pd.DataFrame()
-if 'summary_for_prompt' not in st.session_state:
-    st.session_state.summary_for_prompt = ""
-if 'future_data_string' not in st.session_state:
-    st.session_state.future_data_string = ""
-if 'combined_df' not in st.session_state:
-    st.session_state.combined_df = pd.DataFrame()
-if 'cto_deep_dive_analysis' not in st.session_state:
-    st.session_state.cto_deep_dive_analysis = "No data available."
 
 # --- Custom CSS for Styling (merged & improved) ---
 st.markdown(
@@ -399,27 +276,6 @@ with st.sidebar:
     what_if_change = st.number_input("Future Revenue Change (%)", min_value=-100.0, max_value=100.0, value=0.0, step=0.5, help="Enter a percentage change to simulate a what-if scenario. Ex: 10 for a 10% increase.")
 
     st.markdown("---")
-    st.markdown("---")
-    st.subheader("Model Execution")
-    # This button triggers the execution function
-    if st.button("▶️ RUN FINANCIAL FORECAST", type="primary"):
-        with st.spinner("Executing Prophet Model, Saving to Snowflake, and Preparing Data..."):
-            # Call the function defined in Step 1, passing current parameter values
-            success = run_prophet_model_and_save(
-                df=df,
-                forecast_period_days=forecast_period_days,
-                confidence_interval=confidence_interval,
-                weekly_seasonality=weekly_seasonality,
-                yearly_seasonality=yearly_seasonality,
-                what_if_enabled=what_if_enabled,
-                what_if_change=what_if_change,
-                conn=conn,
-                cur=cur
-            )
-            # st.rerun() forces the entire script to restart, pulling data from session_state
-            if success:
-                st.rerun() 
-    st.markdown("---")
     st.header("🔖 Bookmarks")
     st.markdown(
         """
@@ -480,35 +336,7 @@ try:
 except Exception as e:
     st.error(f"❌ Error fetching data from Snowflake: {e}")
     st.stop()
-# --- Replacement Block for Automatic Execution (around line 150) ---
 
-if not st.session_state.forecast_run:
-    st.warning("⚠️ **Forecast not yet run.** Please set parameters and click **'▶️ RUN FINANCIAL FORECAST'** in the sidebar to generate the data.")
-    
-    # Initialize minimal safe placeholders to prevent crashes in the rest of the script
-    # These will only hold data if the run button has NOT been clicked.
-    forecast = df.copy().rename(columns={'y': 'yhat'})
-    forecast['yhat_lower'] = forecast['yhat'] * 0.9
-    forecast['yhat_upper'] = forecast['yhat'] * 1.1
-    forecast['yhat_what_if'] = forecast['yhat'] # Fallback
-    
-    # Placeholder for KPI calculations that follow (must exist as a global for now)
-    summary_for_prompt = "Click RUN FINANCIAL FORECAST for data."
-    future_data_string = "No data to show."
-
-    # Build combined dataframe using historical data only as a safe fallback
-    combined_df = df[['ds', 'y']].assign(type='Historical')
-
-else:
-    # Use the data generated by the successful button click
-    forecast = st.session_state.forecast_data
-    # Re-generate combined_df to respect the current what_if setting on script rerun
-    forecast_col = 'yhat_what_if' if what_if_enabled else 'yhat'
-    
-    combined_df = st.session_state.combined_df
-    # Note: summary_for_prompt and future_data_string are in session_state, used in Tab 5.
-
-# --- End Replacement Block ---
 # --- Fit Prophet model with spinner (loading indicator) ---
 with st.spinner(" ⏳ Training Prophet model and generating forecast..."):
     holidays_df = pd.DataFrame([
@@ -560,7 +388,7 @@ except Exception as e:
 # ---------------------------------------------------------------------
 # --- Data Preparation for Gemini Prompt (Summary Creation based on KPIs)
 # ---------------------------------------------------------------------
-#global summary_for_prompt
+global summary_for_prompt
 try:
     
     # Ensure data is ready and clean
@@ -591,7 +419,7 @@ try:
     avg_confidence_spread = (df_forecast['yhat_upper'] - df_forecast['yhat_lower']).mean()
     # Calculate spread as a percentage of the mean forecast value
     avg_confidence_spread_pct = (avg_confidence_spread / df_forecast['yhat'].mean()) * 100
-    #global summary_for_prompt
+    global summary_for_prompt
     # --- 2. Create the structured summary string ---
     summary_for_prompt = f"""
 Financial Data Summary:
@@ -1608,19 +1436,17 @@ with tab5:
     st.info("Executive-level analysis powered by Gemini, synthesizing historical context with future revenue forecasts to guide technology strategy.")
     st.markdown("---")
 
+    # --- GEMINI DEEP DIVE ANALYSIS BLOCK (Forward-Looking Strategic Report) ---
+
     # Use a unique session state key for caching the Deep Dive result
     if 'cto_deep_dive_analysis' not in st.session_state or st.button("Generate CTO Strategic Report", key="refresh_cto_dive_btn"):
         
-        # Check for data availability using session state
-        if not st.session_state.forecast_run:
-            st.warning("⚠️ Please run the financial forecast first (using the **'▶️ RUN FINANCIAL FORECAST'** button in the sidebar) to generate the necessary data.")
+        # Check for data availability
+        # This relies on 'future_data_string' and 'summary_for_prompt' being set after the forecast run (e.g., in Tab 2).
+        if 'future_data_string' not in globals() or 'summary_for_prompt' not in globals():
+            st.warning("⚠️ Please run the financial forecast first (in the Forecasting tab) to generate the necessary data.")
             st.session_state.cto_deep_dive_analysis = "No data available."
-            st.session_state.cto_deep_dive_success = False
         else:
-            # Retrieve data from session state
-            summary_for_prompt = st.session_state.summary_for_prompt
-            future_data_string = st.session_state.future_data_string
-            
             # --- Enhanced Deep Dive Prompt Setup for CTO Focus ---
             DEEP_DIVE_PROMPT = f"""
             You are a top-tier financial strategist for a technology company. Your audience is the Chief Technology Officer (CTO). Analyze the following historical KPIs and the future time-series forecast to give a deep-dive analysis. Focus on technology and strategic resource allocation.
@@ -1650,43 +1476,37 @@ with tab5:
 
             # --- Gemini API Call ---
             try:
-                gemini_api_key = st.secrets["gemini"]["api_key"]
-                if not gemini_api_key:
-                    st.error("Gemini API key is missing. Please ensure it is set in Streamlit secrets.")
-                    st.session_state.cto_deep_dive_analysis = "Error: API Key missing."
-                    st.session_state.cto_deep_dive_success = False
-                else:
-                    with st.spinner("⏳ Generating CTO Strategic Report using Gemini 2.5 Flash..."):
-                        client = genai.Client(api_key=gemini_api_key)
-                        
-                        response = client.models.generate_content(
-                            model="gemini-2.5-flash", 
-                            contents=[DEEP_DIVE_PROMPT]
-                        )
-                        
-                        analysis_text = response.text
-                        st.session_state.cto_deep_dive_analysis = analysis_text
-                        st.session_state.cto_deep_dive_success = True
-                        st.success("✅ Strategic Report Ready")
+                with st.spinner("⏳ Generating CTO Strategic Report using Gemini 2.5 Flash..."):
+                    client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
+                    
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=[DEEP_DIVE_PROMPT]
+                    )
+                    
+                    analysis_text = response.text
+                    st.session_state.cto_deep_dive_analysis = analysis_text
+                    st.success("✅ Strategic Report Ready")
 
             except APIError as e:
                 st.error(f"Gemini API Error: Failed to retrieve analysis. ({e})")
                 st.session_state.cto_deep_dive_analysis = "Error: Could not retrieve deep dive analysis due to an API error."
-                st.session_state.cto_deep_dive_success = False
             except Exception as e:
                 st.error(f"Error processing deep dive: {e}")
                 st.session_state.cto_deep_dive_analysis = "Error: Analysis failed due to an unexpected issue."
-                st.session_state.cto_deep_dive_success = False
 
     # --- Display Results ---
-    if st.session_state.get('cto_deep_dive_analysis') == "No data available." or not st.session_state.get('cto_deep_dive_success', False):
-        st.info("Click **'Generate CTO Strategic Report'** to initiate the AI analysis, after running the forecast.")
+    if st.session_state.get('cto_deep_dive_analysis') == "No data available.":
+        st.warning("⚠️ Please ensure the forecast is run and data is loaded to generate the strategic report.")
     elif 'cto_deep_dive_analysis' in st.session_state:
         st.subheader("Future-Proof Strategic Report (Powered by AI)")
         # Display the Gemini-generated markdown analysis directly
         st.markdown(st.session_state.cto_deep_dive_analysis)
-
-# --- Final Watermark ---
+    else:
+        st.info("Click 'Generate CTO Strategic Report' to initiate the AI analysis.")
+    
+    st.markdown("---")
+# --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
 # --- Floating Chat (DROP-IN) ---
