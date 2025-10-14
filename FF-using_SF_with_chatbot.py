@@ -1429,107 +1429,7 @@ with tab4:
         fig_anomalies.update_layout(title="Historical Revenue with Detected Anomalies", yaxis_title="Revenue ($)")
         st.plotly_chart(fig_anomalies, use_container_width=True)
     
-    st.markdown("---")
-    # --- 3️⃣ Deep Dive Analysis Section ---
-st.header("🔍 Future-Proof Deep Dive")
-st.info("Detailed analysis by Gemini based on the projected time series data.")
-
-# Define a unique session state key for caching the Deep Dive result
-if 'deep_dive_analysis' not in st.session_state or st.button("Generate Deep Dive Analysis"):
-    
-    if 'future_data_string' not in globals():
-         st.warning("⚠️ Run the forecast first to prepare the future data.")
-         st.stop()
-         
-    DEEP_DIVE_PROMPT = f"""
-    You are a strategic business consultant. Analyze the following projected financial time series data (DS, yhat, yhat_lower, yhat_upper). 
-    
-    **Forecast Data Sample (Future Dates):**
-    {future_data_string}
-    
-    Based on this data, provide a 'future-proof' analysis focusing on:
-    1. **Key Risk Areas:** Where does the lower bound (yhat_lower) signal potential problems?
-    2. **Opportunity Windows:** When and how high does the upper bound (yhat_upper) suggest peak opportunities?
-    3. **Strategic Recommendations:** What two long-term strategic moves (e.g., investment, resource reallocation, market entry) should be considered based on the overall trend?
-    
-    Provide your analysis as a markdown-formatted response. Do not use JSON.
-    """
-
-    try:
-        with st.spinner("⏳ Analyzing future time series data for strategic deep dive..."):
-            client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
-            
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=DEEP_DIVE_PROMPT
-            )
-            
-            analysis_text = response.text
-            st.session_state.deep_dive_analysis = analysis_text
-            st.success("✅ Deep Dive Analysis Ready")
-
-    except APIError as e:
-        st.error(f"Gemini API Error during Deep Dive: {e}")
-        st.session_state.deep_dive_analysis = "Error: Could not retrieve deep dive analysis."
-    except Exception as e:
-        st.error(f"Error processing deep dive: {e}")
-        st.session_state.deep_dive_analysis = "Error: Analysis failed."
-
-# 3. Display Results
-st.markdown("---")
-if 'deep_dive_analysis' in st.session_state:
-    # Display the Gemini-generated markdown analysis directly
-    st.markdown(st.session_state.deep_dive_analysis)
-else:
-    st.info("Click 'Generate Deep Dive Analysis' to begin.")
-    # --- Financial KPI Insights ---
-    st.subheader("🧾 Financial KPI Insights")
-    
-    col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
-    with col_kpi1:
-        # Revenue Run-Rate
-        last_90_days_avg_revenue = df['y'].tail(90).mean()
-        annual_run_rate = last_90_days_avg_revenue * 365
-        st.markdown(
-            f"""
-            <div class="kpi-container">
-                <p class="kpi-title">Annual Run-Rate (ARR)</p>
-                <p class="kpi-value">${annual_run_rate/1000000:,.2f}M</p>
-                <p class="kpi-subtitle">Based on last 90 days</p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-    
-    with col_kpi2:
-        # Growth Target Tracking
-        st.markdown("<p class='kpi-title'>Growth Target Tracking</p>", unsafe_allow_html=True)
-        growth_target_pct = st.number_input("Annual Growth Target (%)", value=15.0, step=1.0, format="%.1f")
-        latest_yoy_growth = df['y'].iloc[-365:].sum() / df['y'].iloc[-730:-365].sum() - 1 if len(df) > 730 else 0
-        
-        target_status = "On Track" if latest_yoy_growth * 100 >= growth_target_pct else "Off Target"
-        status_color = "#1f9d55" if target_status == "On Track" else "#d45a5a"
-        
-        st.markdown(f"""
-        <div class="kpi-container">
-            <p class="kpi-title">Actual YoY Growth</p>
-            <p class="kpi-value" style="color:{status_color};">{latest_yoy_growth*100:,.2f}%</p>
-            <p class="kpi-subtitle">Target: {growth_target_pct:.1f}% ({target_status})</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_kpi3:
-        st.markdown(f"""
-        <div class="kpi-container">
-            <p class="kpi-title">Revenue Milestones</p>
-            <ul>
-                <li>$1M: {df[df['y'].cumsum() >= 1000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 1000000].empty else "Not yet reached"}</li>
-                <li>$5M: {df[df['y'].cumsum() >= 5000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 5000000].empty else "Not yet reached"}</li>
-                <li>$10M: {df[df['y'].cumsum() >= 10000000]['ds'].min().strftime('%Y-%m-%d') if not df[df['y'].cumsum() >= 10000000].empty else "Not yet reached"}</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    
+    st.markdown("---") 
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
 
@@ -1539,10 +1439,6 @@ st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for
 
 # --- Floating Chat (GLOBAL OVERLAY via Shadow DOM) ---
 # Works above the whole Streamlit page; includes robust API error messages.
-
-import base64, os
-import streamlit as st
-
 CHAT_ICON_PATH = "miralogo.png"
 
 try:
