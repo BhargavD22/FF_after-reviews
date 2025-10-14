@@ -591,7 +591,7 @@ try:
     avg_confidence_spread = (df_forecast['yhat_upper'] - df_forecast['yhat_lower']).mean()
     # Calculate spread as a percentage of the mean forecast value
     avg_confidence_spread_pct = (avg_confidence_spread / df_forecast['yhat'].mean()) * 100
-    global summary_for_prompt
+    #global summary_for_prompt
     # --- 2. Create the structured summary string ---
     summary_for_prompt = f"""
 Financial Data Summary:
