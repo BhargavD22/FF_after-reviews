@@ -1076,7 +1076,7 @@ with tab3:
     st.markdown('<div id="insights--recommendations"></div>', unsafe_allow_html=True)
     # --- 1️⃣ Stylized Summary Section ---
     st.markdown("### 📊 Executive Summary Overview")
-
+    
     hist_total = total_historical_revenue
     fore_total = total_forecasted_revenue
     change_pct = total_revenue_delta
@@ -1130,112 +1130,112 @@ with tab3:
 
     st.markdown("---")
 
-# --- 2️⃣ Gemini Recommendations Section ---
-st.header("🎯 AI-Generated Recommendations")
-
-# Use st.session_state for caching the results. The API call runs only on first load or when the button is clicked.
-if 'recommendations_data' not in st.session_state or st.button("🔄 Refresh Recommendations"):
-
-    # Check for prompt data availability before proceeding
-    if 'summary_for_prompt' not in globals():
-        st.warning("⚠️ Run the forecast first to generate summary data.")
-        st.session_state.recommendations_data = {"recommendations": []}
-    else:
-        recommendation_prompt = (
-            "Analyze the following financial KPIs and summary:\n\n"
-            f"---SUMMARY---\n{summary_for_prompt}\n---END SUMMARY---\n\n"
-            "Generate 3 clear, data-driven business recommendations. Each should include a rationale and 3-5 measurable action items. "
-            "Output must be valid JSON following the defined schema."
-        )
-
-        # The JSON schema 
-        recommendations_schema = {
-            "type": "object",
-            "properties": {
-                "recommendations": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "recommendation": {"type": "string"},
-                            "rationale": {"type": "string"},
-                            "action_items": {"type": "array", "items": {"type": "string"}}
-                        },
-                        "required": ["recommendation", "rationale", "action_items"]
-                    }
-                }
-            },
-            "required": ["recommendations"]
-        }
-
-        try:
-            with st.spinner("🧠 Generating actionable recommendations using Gemini 2.5 Flash..."):
-                client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
-                config = {
-                    "temperature": 0.5,
-                    "max_output_tokens": 4096,
-                    "response_mime_type": "application/json",
-                    "response_schema": recommendations_schema,
-                }
-                
-                # API Call
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=[recommendation_prompt],
-                    config=config,
-                )
-
-                if response.text and response.text.strip():
-                    llm_data = json.loads(response.text)
-                    st.session_state.recommendations_data = llm_data
-                    st.success("✅ AI Recommendations Ready")
-                else:
-                    st.warning("⚠️ No recommendations returned from Gemini.")
-                    st.session_state.recommendations_data = {"recommendations": []}
-
-        except Exception as e:
-            st.error(f"❌ Error generating recommendations: {e}")
+    # --- 2️⃣ Gemini Recommendations Section ---
+    st.header("🎯 AI-Generated Recommendations")
+    
+    # Use st.session_state for caching the results. The API call runs only on first load or when the button is clicked.
+    if 'recommendations_data' not in st.session_state or st.button("🔄 Refresh Recommendations"):
+    
+        # Check for prompt data availability before proceeding
+        if 'summary_for_prompt' not in globals():
+            st.warning("⚠️ Run the forecast first to generate summary data.")
             st.session_state.recommendations_data = {"recommendations": []}
+        else:
+            recommendation_prompt = (
+                "Analyze the following financial KPIs and summary:\n\n"
+                f"---SUMMARY---\n{summary_for_prompt}\n---END SUMMARY---\n\n"
+                "Generate 3 clear, data-driven business recommendations. Each should include a rationale and 3-5 measurable action items. "
+                "Output must be valid JSON following the defined schema."
+            )
+    
+            # The JSON schema 
+            recommendations_schema = {
+                "type": "object",
+                "properties": {
+                    "recommendations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "recommendation": {"type": "string"},
+                                "rationale": {"type": "string"},
+                                "action_items": {"type": "array", "items": {"type": "string"}}
+                            },
+                            "required": ["recommendation", "rationale", "action_items"]
+                        }
+                    }
+                },
+                "required": ["recommendations"]
+            }
+    
+            try:
+                with st.spinner("🧠 Generating actionable recommendations using Gemini 2.5 Flash..."):
+                    client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
+                    config = {
+                        "temperature": 0.5,
+                        "max_output_tokens": 4096,
+                        "response_mime_type": "application/json",
+                        "response_schema": recommendations_schema,
+                    }
+                    
+                    # API Call
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=[recommendation_prompt],
+                        config=config,
+                    )
+    
+                    if response.text and response.text.strip():
+                        llm_data = json.loads(response.text)
+                        st.session_state.recommendations_data = llm_data
+                        st.success("✅ AI Recommendations Ready")
+                    else:
+                        st.warning("⚠️ No recommendations returned from Gemini.")
+                        st.session_state.recommendations_data = {"recommendations": []}
+    
+            except Exception as e:
+                st.error(f"❌ Error generating recommendations: {e}")
+                st.session_state.recommendations_data = {"recommendations": []}
+                
+            # Retrieve cached data
+    llm_data = st.session_state.recommendations_data
+    recommendations = llm_data.get("recommendations", [])
+    
+    
+    # --- 3️⃣ Display Recommendations (The Fixed Rendering Block) ---
+    if recommendations:
+        # 💥 CRITICAL FIX: Removed the 'key' argument which caused the TypeError.
+        # The freezing issue is still resolved by switching from custom JS to native st.expander.
+        for i, rec in enumerate(recommendations, start=1):
+            # Ensure 'recommendation' key exists for the title
+            title = rec.get('recommendation', f"Recommendation #{i}")
             
-        # Retrieve cached data
-        llm_data = st.session_state.recommendations_data
-        recommendations = llm_data.get("recommendations", [])
-
-
-# --- 3️⃣ Display Recommendations (The Fixed Rendering Block) ---
-if recommendations:
-    # 💥 CRITICAL FIX: Removed the 'key' argument which caused the TypeError.
-    # The freezing issue is still resolved by switching from custom JS to native st.expander.
-    for i, rec in enumerate(recommendations, start=1):
-        # Ensure 'recommendation' key exists for the title
-        title = rec.get('recommendation', f"Recommendation #{i}")
-        
-        # Use st.expander with only supported arguments
-        with st.expander(
-            f"**#{i} - {title}**", 
-            expanded=False # Use the expanded argument if available, otherwise just the label
-        ):
-            # Rationale
-            rationale = rec.get('rationale', 'N/A')
-            st.markdown(f'<p style="font-size: 1rem;"><b>Rationale:</b> {rationale}</p>', unsafe_allow_html=True)
-            
-            # Action Steps
-            action_items = rec.get('action_items', [])
-            if action_items:
-                st.markdown("**Action Items:**")
-                action_list_html = '<ul style="list-style-type: none; padding-left: 0;">'
-                for item in action_items:
-                    action_list_html += f'<li><span style="color: #1f77b4; font-weight: bold;">✔</span> {item}</li>'
-                action_list_html += '</ul>'
-                st.markdown(action_list_html, unsafe_allow_html=True)
-            else:
-                st.markdown("*No specific action items provided.*")
-else:
-    # Only show this if the data was supposed to be run
-    if 'summary_for_prompt' in globals() and not recommendations:
-         st.info("No recommendations were generated. Check the forecast output or refresh insights above.")
-
-st.markdown("---")
+            # Use st.expander with only supported arguments
+            with st.expander(
+                f"**#{i} - {title}**", 
+                expanded=False # Use the expanded argument if available, otherwise just the label
+            ):
+                # Rationale
+                rationale = rec.get('rationale', 'N/A')
+                st.markdown(f'<p style="font-size: 1rem;"><b>Rationale:</b> {rationale}</p>', unsafe_allow_html=True)
+                
+                # Action Steps
+                action_items = rec.get('action_items', [])
+                if action_items:
+                    st.markdown("**Action Items:**")
+                    action_list_html = '<ul style="list-style-type: none; padding-left: 0;">'
+                    for item in action_items:
+                        action_list_html += f'<li><span style="color: #1f77b4; font-weight: bold;">✔</span> {item}</li>'
+                    action_list_html += '</ul>'
+                    st.markdown(action_list_html, unsafe_allow_html=True)
+                else:
+                    st.markdown("*No specific action items provided.*")
+    else:
+        # Only show this if the data was supposed to be run
+        if 'summary_for_prompt' in globals() and not recommendations:
+             st.info("No recommendations were generated. Check the forecast output or refresh insights above.")
+    
+    st.markdown("---")
     
 # ---------------------- TAB 4: Deep Dive Analysis ----------------------
 with tab4:
