@@ -1457,38 +1457,40 @@ with tab5:
         else:
             # Build the deep-dive prompt
             DEEP_DIVE_PROMPT = f"""
-                    You are an executive financial strategist advising a Chief Technology Officer (CTO).
-                    Based on the following financial summary and forecast data, create a concise, actionable
-                    technology strategy briefing suitable for an executive meeting deck.
+                    You are an executive financial strategist advising the Chief Technology Officer (CTO)
+                    of a digital enterprise using an AI-driven financial forecasting platform
+                    (built on Snowflake, Prophet, and Streamlit).  
+                    Your task is to translate forecast insights into *fast-to-read, high-impact technology actions*.
                     
-                    **Summary KPIs:**
+                    **Input Summary (from model):**
                     {summary_for_prompt}
                     
                     **Forecast Horizon:** {forecast_months} months
                     
-                    Structure the output in markdown using exactly four titled sections:
+                    Write a brief markdown report with exactly four sections, optimized for an executive audience:
                     
                     ### 1. Forecasted Trajectory & Velocity
-                    Briefly summarize the growth direction, momentum, and key performance signal.
-                    Use one short paragraph or 3–4 bullets — focus on *speed and direction*, not data repetition.
+                    Summarize the revenue direction and pace based on the model’s current trajectory.
+                    Limit to 3–4 short bullets focused on business momentum, stability, and forecast clarity.
                     
                     ### 2. Critical Future Risk Windows & Tech Contingency
-                    Highlight the single biggest projected dip or uncertainty window.
-                    Explain in 2–3 bullets what *technology or architecture-level mitigations* could reduce that risk.
+                    Identify the most uncertain or vulnerable future period (based on confidence spread or volatility).
+                    Suggest 2–3 specific *technology-level responses* — e.g., infrastructure scaling, AI optimization, data quality reinforcement.
                     
                     ### 3. Strategic R&D / Tech Investment Timing
-                    Identify the best upcoming window (month/quarter) for new investment or scaling,
-                    and justify it in 2–3 concise bullets — focus on opportunity, not cost.
+                    Pinpoint the most favorable upcoming quarter for innovation or platform investment.
+                    Explain briefly *why* that timing aligns with projected growth, customer demand, or cost efficiency.
                     
-                    ### 4. Long-Term Architectural Strategy
-                    Give a high-level 12–18 month outlook.
-                    State whether the focus should be on **scaling**, **cost optimization**, or **stabilization**,
-                    and list 2–4 practical steps (e.g., AI integration, automation, infra scaling, modernization).
+                    ### 4. Long-Term Architectural Strategy (12–18 Months)
+                    Conclude with a high-level architecture plan:
+                    Should the org emphasize **scaling**, **cost optimization**, or **system stabilization**?
+                    List 2–4 concrete focus areas (e.g., modernizing data pipelines, expanding AI forecasting, or automating reporting).
                     
-                    Keep tone direct, analytical, and C-suite friendly:
-                    - Avoid long explanations or technical jargon.
-                    - No more than 4–5 sentences or bullets per section.
-                    - End with an optional 1-line “Strategic Summary” if appropriate.
+                    Keep the tone clear, executive, and forward-looking:
+                    - No paragraphs longer than 3 sentences.
+                    - Favor bullets over prose.
+                    - Avoid repeating data points already provided.
+                    - End with one concise “Strategic Summary” line (max 20 words) capturing the overall tech direction.
             """
 
             try:
