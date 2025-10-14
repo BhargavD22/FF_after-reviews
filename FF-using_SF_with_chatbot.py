@@ -1430,7 +1430,58 @@ with tab4:
         st.plotly_chart(fig_anomalies, use_container_width=True)
     
     st.markdown("---")
+    # --- 3️⃣ Deep Dive Analysis Section ---
+st.header("🔍 Future-Proof Deep Dive")
+st.info("Detailed analysis by Gemini based on the projected time series data.")
+
+# Define a unique session state key for caching the Deep Dive result
+if 'deep_dive_analysis' not in st.session_state or st.button("Generate Deep Dive Analysis"):
     
+    if 'future_data_string' not in globals():
+         st.warning("⚠️ Run the forecast first to prepare the future data.")
+         st.stop()
+         
+    DEEP_DIVE_PROMPT = f"""
+    You are a strategic business consultant. Analyze the following projected financial time series data (DS, yhat, yhat_lower, yhat_upper). 
+    
+    **Forecast Data Sample (Future Dates):**
+    {future_data_string}
+    
+    Based on this data, provide a 'future-proof' analysis focusing on:
+    1. **Key Risk Areas:** Where does the lower bound (yhat_lower) signal potential problems?
+    2. **Opportunity Windows:** When and how high does the upper bound (yhat_upper) suggest peak opportunities?
+    3. **Strategic Recommendations:** What two long-term strategic moves (e.g., investment, resource reallocation, market entry) should be considered based on the overall trend?
+    
+    Provide your analysis as a markdown-formatted response. Do not use JSON.
+    """
+
+    try:
+        with st.spinner("⏳ Analyzing future time series data for strategic deep dive..."):
+            client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=DEEP_DIVE_PROMPT
+            )
+            
+            analysis_text = response.text
+            st.session_state.deep_dive_analysis = analysis_text
+            st.success("✅ Deep Dive Analysis Ready")
+
+    except APIError as e:
+        st.error(f"Gemini API Error during Deep Dive: {e}")
+        st.session_state.deep_dive_analysis = "Error: Could not retrieve deep dive analysis."
+    except Exception as e:
+        st.error(f"Error processing deep dive: {e}")
+        st.session_state.deep_dive_analysis = "Error: Analysis failed."
+
+# 3. Display Results
+st.markdown("---")
+if 'deep_dive_analysis' in st.session_state:
+    # Display the Gemini-generated markdown analysis directly
+    st.markdown(st.session_state.deep_dive_analysis)
+else:
+    st.info("Click 'Generate Deep Dive Analysis' to begin.")
     # --- Financial KPI Insights ---
     st.subheader("🧾 Financial KPI Insights")
     
