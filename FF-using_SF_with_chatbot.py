@@ -1203,17 +1203,17 @@ recommendations = llm_data.get("recommendations", [])
 
 
 # --- 3️⃣ Display Recommendations (The Fixed Rendering Block) ---
-
 if recommendations:
+    # 💥 CRITICAL FIX: Removed the 'key' argument which caused the TypeError.
+    # The freezing issue is still resolved by switching from custom JS to native st.expander.
     for i, rec in enumerate(recommendations, start=1):
-       
+        # Ensure 'recommendation' key exists for the title
         title = rec.get('recommendation', f"Recommendation #{i}")
         
-        # Use st.expander with a unique key for stability
+        # Use st.expander with only supported arguments
         with st.expander(
             f"**#{i} - {title}**", 
-            expanded=False, 
-            key=f"rec_expander_{i}" 
+            expanded=False # Use the expanded argument if available, otherwise just the label
         ):
             # Rationale
             rationale = rec.get('rationale', 'N/A')
@@ -1223,7 +1223,6 @@ if recommendations:
             action_items = rec.get('action_items', [])
             if action_items:
                 st.markdown("**Action Items:**")
-                # Using an unordered list for clear action steps
                 action_list_html = '<ul style="list-style-type: none; padding-left: 0;">'
                 for item in action_items:
                     action_list_html += f'<li><span style="color: #1f77b4; font-weight: bold;">✔</span> {item}</li>'
