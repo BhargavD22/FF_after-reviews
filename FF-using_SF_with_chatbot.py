@@ -1197,9 +1197,9 @@ if 'recommendations_data' not in st.session_state or st.button("🔄 Refresh Rec
             st.error(f"❌ Error generating recommendations: {e}")
             st.session_state.recommendations_data = {"recommendations": []}
             
-# Retrieve cached data
-llm_data = st.session_state.recommendations_data
-recommendations = llm_data.get("recommendations", [])
+        # Retrieve cached data
+        llm_data = st.session_state.recommendations_data
+        recommendations = llm_data.get("recommendations", [])
 
 
 # --- 3️⃣ Display Recommendations (The Fixed Rendering Block) ---
