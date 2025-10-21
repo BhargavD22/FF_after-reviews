@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import os
+os.environ["PROPHET_DISABLE_STAN_INIT"] = "1"
 from prophet import Prophet
 import plotly.graph_objects as go
 import numpy as np
