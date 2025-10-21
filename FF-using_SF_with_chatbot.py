@@ -1450,7 +1450,7 @@ with tab5:
 
     # Auto-generate or manual trigger
     auto_trigger = st.session_state.get('trigger_cto_refresh', False)
-    manual_trigger = st.button("🔄 Generate CTO Strategic Report")
+    manual_trigger = st.button("🔄 Generate CTO Strategic Insights")
 
     if auto_trigger or manual_trigger:
         if 'summary_for_prompt' not in globals():
