@@ -1181,7 +1181,7 @@ with tab3:
             }
     
             try:
-                with st.spinner("🧠 Generating actionable recommendations using Gemini 2.5 Flash..."):
+                with st.spinner("🧠 Generating actionable recommendations using miraAI..."):
                     client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
                     config = {
                         "temperature": 0.5,
@@ -1202,7 +1202,7 @@ with tab3:
                         st.session_state.recommendations_data = llm_data
                         st.success("✅ AI Recommendations Ready")
                     else:
-                        st.warning("⚠️ No recommendations returned from Gemini.")
+                        st.warning("⚠️ No recommendations returned from miraAI.")
                         st.session_state.recommendations_data = {"recommendations": []}
     
             except Exception as e:
@@ -1444,8 +1444,8 @@ with tab4:
     st.markdown("---")
 # ---------------------- TAB 5: CTO STRATEGIC REPORT ----------------------
 with tab5:
-    st.header("CTO Strategic Trajectory & Deep Dive")
-    st.info("Executive-level analysis powered by Gemini (Free Tier)")
+    st.header("Executive Strategic Trajectory & Deep Dive")
+    st.info("Executive Analysis powered by miraAI")
     st.markdown("---")
 
     # Auto-generate or manual trigger
@@ -1496,7 +1496,7 @@ with tab5:
             """
 
             try:
-                with st.spinner("🧠 Generating CTO Strategic Report via Gemini..."):
+                with st.spinner("🧠 Generating Executive Strategic Insights via miraAI..."):
                     client = genai.Client(api_key=st.secrets["gemini"]["api_key"])
                     response = client.models.generate_content(
                         model="gemini-2.5-flash", 
@@ -1504,17 +1504,17 @@ with tab5:
                     )
                     analysis_text = response.text.strip()
                     st.session_state.cto_deep_dive_analysis = analysis_text
-                    st.success("✅ Strategic Report Generated")
+                    st.success("✅ Strategic Insights Generated")
             except Exception as e:
-                st.error(f"❌ Error generating report: {e}")
+                st.error(f"❌ Error generating Insights: {e}")
                 st.session_state.cto_deep_dive_analysis = f"Error: {e}"
 
     # Display results
     if 'cto_deep_dive_analysis' in st.session_state:
-        st.subheader("📘 AI-Generated Strategic Report")
+        st.subheader("📘 miraAI- Strategic Insights")
         st.markdown(st.session_state.cto_deep_dive_analysis)
     else:
-        st.info("Click the button above or move the forecast slider to generate the CTO report.")
+        st.info("Click the button above or move the forecast slider to generate the Executive report.")
 
 # --- Centered Watermark (updated text as requested) ---
 st.markdown('<p class="watermark">Created by Miracle Software Systems for AI for Business</p>', unsafe_allow_html=True)
