@@ -1,4 +1,5 @@
 streamlit
+numpy<2.0
 prophet==1.1.5
 cmdstanpy==1.2.0
 plotly
@@ -9,6 +10,7 @@ snowflake-connector-python
 requests
 google-genai
 tabulate 
+
 
 
 
