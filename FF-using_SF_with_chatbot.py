@@ -1143,7 +1143,7 @@ with tab3:
     st.markdown("---")
 
     # --- 2️⃣ Gemini Recommendations Section ---
-    st.header("🎯 AI-Generated Recommendations")
+    st.header("🎯 miraAI-Generated Recommendations")
     
     # Use st.session_state for caching the results. The API call runs only on first load or when the button is clicked.
     if 'recommendations_data' not in st.session_state or st.button("🔄 Refresh Recommendations"):
@@ -1200,7 +1200,7 @@ with tab3:
                     if response.text and response.text.strip():
                         llm_data = json.loads(response.text)
                         st.session_state.recommendations_data = llm_data
-                        st.success("✅ AI Recommendations Ready")
+                        st.success("✅ miraAI Recommendations Ready")
                     else:
                         st.warning("⚠️ No recommendations returned from miraAI.")
                         st.session_state.recommendations_data = {"recommendations": []}
