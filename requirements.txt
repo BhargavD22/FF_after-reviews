@@ -8,4 +8,6 @@ snowflake-connector-python
 requests
 google-genai
 tabulate 
+pystan==2.19.1.1
+
 
