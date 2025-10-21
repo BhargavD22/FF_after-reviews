@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-import os
-os.environ["PROPHET_DISABLE_STAN_INIT"] = "1"
-from prophet import Prophet
+from prophet_reborn import Prophet
 import plotly.graph_objects as go
 import numpy as np
 from prophet.plot import plot_components_plotly
