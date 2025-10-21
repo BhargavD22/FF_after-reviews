@@ -1,5 +1,6 @@
 streamlit
-prophet
+prophet==1.1.5
+cmdstanpy==1.2.0
 plotly
 google-cloud-bigquery
 pandas
@@ -8,6 +9,7 @@ snowflake-connector-python
 requests
 google-genai
 tabulate 
+
 
 
 
