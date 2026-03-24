@@ -371,7 +371,7 @@ try:
     # Overwrite CSV (same as TRUNCATE + INSERT)
     forecast_for_csv.to_csv("financial_forecast_output.csv", index=False)
 
-    st.sidebar.success("✅ Forecast saved to CSV (financial_forecast_output.csv)")
+    st.sidebar.success("✅ Forecast saved to financial_forecast_output table in SNOWFLAKE")
 
 except Exception as e:
     st.sidebar.error(f"❌ Error saving forecast: {e}")
