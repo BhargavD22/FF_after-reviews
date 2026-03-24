@@ -300,7 +300,7 @@ with st.sidebar:
         [Model Performance](#model-performance)
         [Insights](#insights--recommendations)
         """,
-        unsafe_allow_html=True
+        #unsafe_allow_html=True
         st.markdown("---")
         st.header("🧰 Tech Stack")
         
@@ -320,6 +320,7 @@ with st.sidebar:
         show_tech("LLMs", "assets/logos/llm.png")
         show_tech("Python", "assets/logos/python.png")
         show_tech("Streamlit", "assets/logos/streamlit.png")
+        unsafe_allow_html=True
             )
 
 # --- Data & validation ---
