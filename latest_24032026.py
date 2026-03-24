@@ -307,7 +307,7 @@ with st.sidebar:
 
 try:
     # Load historical data from CSV
-    df = pd.read_csv("financial_forecast.csv")
+    df = pd.read_csv("financial_forecast_modified.csv")
 
     # Standardize column names
     df.columns = df.columns.str.lower()
@@ -318,7 +318,7 @@ try:
 
     # Optional: Load forecast output CSV (if you saved it earlier)
     try:
-        forecast_df = pd.read_csv("financial_forecast_modified.csv")
+        forecast_df = pd.read_csv("financial_forecast_.csv")
         forecast_df.columns = forecast_df.columns.str.lower()
         forecast_df['ds'] = pd.to_datetime(forecast_df['ds'])
     except FileNotFoundError:
