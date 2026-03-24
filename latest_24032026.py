@@ -301,7 +301,26 @@ with st.sidebar:
         [Insights](#insights--recommendations)
         """,
         unsafe_allow_html=True
-    )
+        st.markdown("---")
+        st.header("🧰 Tech Stack")
+        
+        # Helper function to display logo + name
+        def show_tech(name, path):
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.image(path, width=30)
+            with col2:
+                st.markdown(f"**{name}**")
+        
+        # Display each tech
+        show_tech("SAP HANA", "assets/logos/sap_hana.png")
+        show_tech("Snowflake", "assets/logos/snowflake.png")
+        show_tech("SQL Server", "assets/logos/sql_server.png")
+        show_tech("Mira AI", "assets/logos/mira_ai.png")
+        show_tech("LLMs", "assets/logos/llm.png")
+        show_tech("Python", "assets/logos/python.png")
+        show_tech("Streamlit", "assets/logos/streamlit.png")
+            )
 
 # --- Data & validation ---
 
