@@ -301,8 +301,8 @@ with st.sidebar:
         [Insights](#insights--recommendations)
         """,
         #unsafe_allow_html=True
-        st.markdown("---")
-        st.header("🧰 Tech Stack")
+    st.markdown("---")
+    st.header("🧰 Tech Stack")
         
         # Helper function to display logo + name
         def show_tech(name, path):
