@@ -299,7 +299,7 @@ with st.sidebar:
         [Forecast Table](#forecast-table)
         [Model Performance](#model-performance)
         [Insights](#insights--recommendations)
-        """
+        """,
         #""",
         #unsafe_allow_html=True
     st.markdown("---")
