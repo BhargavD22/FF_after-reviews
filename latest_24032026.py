@@ -323,7 +323,7 @@ try:
         forecast_df['ds'] = pd.to_datetime(forecast_df['ds'])
     except FileNotFoundError:
         forecast_df = pd.DataFrame()
-        st.info("No forecast data available yet.")
+        #st.info("No forecast data available yet.")
 
     # Safety checks
     if df.empty:
