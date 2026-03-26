@@ -439,7 +439,7 @@ combined_df = pd.concat([
 ]).reset_index()
 
 # --- Tabs (keep your original two + add Insights) ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations", "💡 Deep Dive Analysis","📋 CTO Strategic Report"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Forecast", "📈 Model Performance", "📚 Insights & Recommendations", "💡 Deep Dive Analysis","📋 Executive Strategic Report"])
 
 # ---------------------- TAB 1: Forecast ----------------------
 with tab1:
